@@ -47,7 +47,7 @@ function ShareKit({
 
   return (
     <div className="text-left">
-      <p className="text-slate-400 mt-3 text-center">
+      <p className="text-fg-muted mt-3 text-center">
         Live. One identity, every surface:
       </p>
 
@@ -68,19 +68,19 @@ function ShareKit({
           className="w-24 h-24 rounded-lg bg-white p-1"
         />
         <div>
-          <p className="text-sm font-semibold text-slate-200">
+          <p className="text-sm font-semibold text-fg">
             Print-grade QR — scans are tracked separately from taps.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <a
               href={`/${handle}?format=qr&download=1`}
-              className="rounded-lg border border-ink-700 text-slate-300 text-xs font-bold px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
+              className="rounded-lg border border-ink-700 text-fg-muted text-xs font-bold px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
             >
               ↓ SVG
             </a>
             <a
               href={`/${handle}?format=qr&type=png&download=1`}
-              className="rounded-lg border border-ink-700 text-slate-300 text-xs font-bold px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
+              className="rounded-lg border border-ink-700 text-fg-muted text-xs font-bold px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
             >
               ↓ PNG (1024px)
             </a>
@@ -103,13 +103,13 @@ function ShareKit({
         </a>
         <a
           href={`/${handle}?format=vcard`}
-          className="rounded-xl border border-ink-700 text-slate-300 font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+          className="rounded-xl border border-ink-700 text-fg-muted font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
         >
           Save contact (.vcf)
         </a>
         <a
           href={`/${handle}?format=json`}
-          className="rounded-xl border border-ink-700 text-slate-300 font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+          className="rounded-xl border border-ink-700 text-fg-muted font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
         >
           JSON surface
         </a>
@@ -117,12 +117,12 @@ function ShareKit({
 
       <a
         href={`/edit/${encodeURIComponent(identityId)}`}
-        className="mt-3 block w-full rounded-xl border border-ink-700 text-slate-300 font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+        className="mt-3 block w-full rounded-xl border border-ink-700 text-fg-muted font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
       >
         ✎ Edit page
       </a>
 
-      <p className="mt-4 text-xs text-slate-500 text-center">
+      <p className="mt-4 text-xs text-fg-subtle text-center">
         Every surface above is a renderer over the same Identity Manifest.
       </p>
     </div>
@@ -237,7 +237,7 @@ export default function ClaimPage(): React.ReactElement {
 
   const badge: Record<Availability, React.ReactElement | null> = {
     idle: null,
-    checking: <span className="text-slate-400 text-sm">checking…</span>,
+    checking: <span className="text-fg-muted text-sm">checking…</span>,
     available: <span className="text-signal-green text-sm font-semibold">✓ available</span>,
     taken: <span className="text-signal-red text-sm font-semibold">taken</span>,
     invalid: <span className="text-signal-amber text-sm font-semibold">2–40 chars, a–z 0–9 -</span>,
@@ -256,10 +256,16 @@ export default function ClaimPage(): React.ReactElement {
           <br />
           <span className="text-accent">Every surface.</span>
         </h1>
-        <p className="text-slate-400 mt-4 text-lg">
-          Claim your handle, publish your identity — profile page, business card, QR code,
-          vCard, JSON. Versioned, tamper-evident, and yours to self-host.
+        <p className="text-fg-muted mt-4 text-lg">
+          Your professional identity, owned like a wallet. Claim your handle and publish
+          everywhere — profile page, business card, QR code, vCard.
         </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2 text-[11px] font-mono uppercase tracking-wider">
+          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">no email required</span>
+          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">every edit versioned</span>
+          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">tamper-evident</span>
+          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">yours to self-host</span>
+        </div>
       </header>
 
       {locked ? (
@@ -280,32 +286,32 @@ export default function ClaimPage(): React.ReactElement {
       <section className="w-full max-w-xl mt-12 bg-ink-900 border border-ink-700 rounded-2xl p-6 sm:p-8 shadow-glow animate-fade-in">
         {!claimed ? (
           <>
-            <label className="block font-mono text-xs uppercase tracking-widest text-slate-400">
+            <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted">
               Claim your handle
             </label>
             <div className="mt-2 flex items-center gap-2 bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 focus-within:border-accent/60">
-              <span className="text-slate-500 font-mono">links/</span>
+              <span className="text-fg-subtle font-mono">links/</span>
               <input
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
                 placeholder="marisayvettehair"
                 autoFocus
-                className="flex-1 bg-transparent outline-none font-mono text-lg text-slate-100 placeholder:text-slate-600"
+                className="flex-1 bg-transparent outline-none font-mono text-lg text-fg placeholder:text-fg-faint"
               />
               {badge[availability]}
             </div>
 
-            <label className="block font-mono text-xs uppercase tracking-widest text-slate-400 mt-6">
+            <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted mt-6">
               Display name
             </label>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Marisa Yvette"
-              className="mt-2 w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-slate-100 placeholder:text-slate-600"
+              className="mt-2 w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint"
             />
 
-            <label className="block font-mono text-xs uppercase tracking-widest text-slate-400 mt-6">
+            <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted mt-6">
               Who are you?
             </label>
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -317,7 +323,7 @@ export default function ClaimPage(): React.ReactElement {
                   className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
                     template === t.id
                       ? "border-accent bg-accent/10 text-accent-soft"
-                      : "border-ink-700 bg-ink-850 text-slate-300 hover:border-ink-700 hover:bg-ink-800"
+                      : "border-ink-700 bg-ink-850 text-fg-muted hover:border-ink-700 hover:bg-ink-800"
                   }`}
                 >
                   {t.name}
@@ -341,7 +347,7 @@ export default function ClaimPage(): React.ReactElement {
             <h2 className="font-display text-3xl font-bold mt-2">@{claimed.handle}</h2>
             {!published ? (
               <>
-                <p className="text-slate-400 mt-3">
+                <p className="text-fg-muted mt-3">
                   Your draft is ready — the template seeded your page. Fill in your
                   links, then publish to go live.
                 </p>
@@ -371,8 +377,8 @@ export default function ClaimPage(): React.ReactElement {
       </section>
       )}
 
-      <footer className="mt-16 text-center text-slate-500 text-sm max-w-xl">
-        <p className="font-semibold text-slate-400">
+      <footer className="mt-16 text-center text-fg-subtle text-sm max-w-xl">
+        <p className="font-semibold text-fg-muted">
           If we can build it, you can build it.
         </p>
         <p className="mt-2">

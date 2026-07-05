@@ -2,26 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-/* NEDB Links — single dark theme, cyan accent.
-   Variable names match tailwind.config.js (ink / accent scales). */
-:root {
-  --ink-950: 7 10 18;      /* #070a12 canvas */
+/*
+ * NEDB Links — dual theme. LinkedIn for web3:
+ *
+ *   pro    (default) — light, airy, professional-network trust. For the
+ *                      salon owner, the consultant, the normie. Cyan
+ *                      deepened for daylight: distinctly Interchained,
+ *                      deliberately not LinkedIn's blue.
+ *   native           — the sovereign dark: ink canvas, electric cyan.
+ *                      For the crypto crowd. One toggle away.
+ *
+ * Everything reads CSS variables; components use semantic tokens
+ * (ink scale, fg scale, accent) and restyle with zero code changes.
+ */
+
+:root,
+[data-theme="pro"] {
+  color-scheme: light;
+
+  /* surfaces: 950 = page, 900 = card, 850 = inset, 800/700 = borders */
+  --ink-950: 243 246 248;   /* #f3f6f8 page */
+  --ink-900: 255 255 255;   /* card */
+  --ink-850: 246 248 250;   /* inset field */
+  --ink-800: 226 232 240;   /* border */
+  --ink-700: 203 213 225;   /* strong border */
+
+  /* text */
+  --fg: 15 23 42;           /* #0f172a */
+  --fg-muted: 71 85 105;    /* #475569 */
+  --fg-subtle: 100 116 139; /* #64748b */
+  --fg-faint: 148 163 184;  /* #94a3b8 */
+
+  /* Interchained cyan, deepened for light backgrounds */
+  --accent: 14 116 144;       /* cyan-700 */
+  --accent-soft: 21 94 117;   /* cyan-800 — link text on light */
+  --accent-glow: 6 182 212;   /* cyan-500 */
+
+  --glow-alpha: 0.10;
+}
+
+[data-theme="native"] {
+  color-scheme: dark;
+
+  --ink-950: 7 10 18;      /* #070a12 */
   --ink-900: 13 18 30;
   --ink-850: 17 22 34;
   --ink-800: 24 31 46;
   --ink-700: 39 48 66;
 
-  --accent: 34 211 238;      /* #22d3ee */
+  --fg: 248 250 252;
+  --fg-muted: 148 163 184;
+  --fg-subtle: 100 116 139;
+  --fg-faint: 71 85 105;
+
+  --accent: 34 211 238;       /* #22d3ee */
   --accent-soft: 103 232 249; /* #67e8f9 */
-  --accent-glow: 6 182 212;   /* #06b6d4 */
+  --accent-glow: 6 182 212;
+
+  --glow-alpha: 0.45;
 }
 
 html,
 body {
-  @apply bg-ink-950 text-slate-100 antialiased;
+  @apply bg-ink-950 text-fg antialiased;
   font-family: Inter, system-ui, sans-serif;
 }
 
 ::selection {
-  background: rgb(var(--accent) / 0.3);
+  background: rgb(var(--accent) / 0.25);
 }

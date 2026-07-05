@@ -65,7 +65,7 @@ export default function IdentitiesPage(): React.ReactElement {
         <header className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold">Identities</h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-fg-muted text-sm mt-1">
               One owner, many identities — each with its own handle and every surface.
             </p>
           </div>
@@ -82,9 +82,9 @@ export default function IdentitiesPage(): React.ReactElement {
         )}
 
         {identities && identities.length === 0 && (
-          <div className="mt-16 text-center text-slate-400">
+          <div className="mt-16 text-center text-fg-muted">
             <p className="text-4xl">⬡</p>
-            <p className="mt-3 font-semibold text-slate-300">No identities yet</p>
+            <p className="mt-3 font-semibold text-fg-muted">No identities yet</p>
             <p className="text-sm mt-1">Claim a handle to publish your first one.</p>
           </div>
         )}
@@ -109,7 +109,7 @@ export default function IdentitiesPage(): React.ReactElement {
                     {idn.status}
                   </span>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
                   <span className="font-mono text-accent-soft">@{idn.handle}</span>
                   <span>{idn.identityType}</span>
                   {idn.template && <span>template: {idn.template}</span>}
@@ -125,7 +125,7 @@ export default function IdentitiesPage(): React.ReactElement {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded-lg border border-ink-700 text-slate-300 px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
+                    className="rounded-lg border border-ink-700 text-fg-muted px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
                   >
                     View ↗
                   </a>

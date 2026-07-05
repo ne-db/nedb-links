@@ -141,7 +141,7 @@ defineTemplate({
   vertical: "Local shops and service businesses",
   description: "Contact, hours, offerings — the storefront that fits in a QR.",
   seed: ({ displayName }) =>
-    seedBlocks("business", "daylight", `${displayName} — local and proud of it.`, () => [
+    seedBlocks("business", "pro", `${displayName} — local and proud of it.`, () => [
       blk("link", { label: "Call us", url: "tel:+1", icon: "☏" }),
       blk("link", { label: "What we do", url: "https://", icon: "◆" }),
       blk("header", { text: "Hours" }),
@@ -171,7 +171,7 @@ defineTemplate({
   vertical: "Consultants and independent professionals",
   description: "Credibility, services, and a calendar link that converts.",
   seed: ({ displayName }) =>
-    seedBlocks("personal", "slate", `${displayName} — let's talk.`, () => [
+    seedBlocks("personal", "pro", `${displayName} — let's talk.`, () => [
       blk("link", { label: "Book a call", url: "https://", icon: "◷" }),
       blk("header", { text: "Services" }),
       blk("text", { text: "How I help and who I help." }),

@@ -56,6 +56,18 @@ export interface Block {
   data: Record<string, unknown>;
 }
 
+/** MySpace energy, Links safety: a structured five-color palette the
+ *  owner edits inline. Validated hex only — never raw CSS. */
+export interface CustomPalette {
+  bg: string;
+  card: string;
+  text: string;
+  sub: string;
+  accent: string;
+}
+
+export const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
 /** The canonical object every renderer understands. */
 export interface IdentityManifest {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -74,6 +86,8 @@ export interface IdentityManifest {
   template?: string;
   /** Theme id understood by HTML renderers. */
   theme?: string;
+  /** Owner-customized palette — overrides theme when present. */
+  themeCustom?: CustomPalette;
   /** Ordered blocks — the body of the identity. */
   blocks: Block[];
   /** Aggregate capabilities advertised by this identity's blocks. */

@@ -18,6 +18,7 @@ export interface ThemePalette {
 }
 
 export const THEMES: Record<string, ThemePalette> = {
+  pro:      { bg: "#f3f6f8", card: "#ffffffee", text: "#0f172a", sub: "#475569", accent: "#0e7490" },
   midnight: { bg: "#070a12", card: "#11162299", text: "#f8fafc", sub: "#94a3b8", accent: "#22d3ee" },
   terminal: { bg: "#05080a", card: "#0c141066", text: "#e2f9ee", sub: "#6ee7b7", accent: "#34d399" },
   violet:   { bg: "#0b0714", card: "#1a112999", text: "#f5f3ff", sub: "#a78bfa", accent: "#8b5cf6" },
@@ -99,7 +100,7 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
 }
 
 export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): string {
-  const t = THEMES[m.theme ?? "midnight"] ?? THEMES.midnight;
+  const t: ThemePalette = m.themeCustom ?? THEMES[m.theme ?? "pro"] ?? THEMES.pro;
   const origin = ctx.origin;
   const url = `${origin}/${esc(m.handle)}`;
   const title = `${esc(m.displayName)} (@${esc(m.handle)})`;

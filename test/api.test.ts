@@ -155,6 +155,34 @@ test("edit chains provenance and revalidates blocks", async () => {
   assert.equal(bad.status, 400, "unknown block type rejected");
 });
 
+test("custom palettes save with hex validation and render publicly", async () => {
+  const custom = { bg: "#101820", card: "#182028", text: "#eef2f6", sub: "#8899aa", accent: "#ff5e00" };
+  const ok = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ themeCustom: custom }),
+  });
+  assert.equal(ok.status, 200);
+  const j = (await ok.json()) as { manifest: { themeCustom?: { accent: string } } };
+  assert.equal(j.manifest.themeCustom?.accent, "#ff5e00", "palette persisted");
+
+  const bad = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ themeCustom: { ...custom, accent: "red; } body { evil" } }),
+  });
+  assert.equal(bad.status, 400, "non-hex colors rejected — no CSS injection path");
+
+  const clear = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ themeCustom: null }),
+  });
+  assert.equal(clear.status, 200);
+  const cleared = (await clear.json()) as { manifest: { themeCustom?: unknown } };
+  assert.equal(cleared.manifest.themeCustom, undefined, "explicit null clears the palette");
+});
+
 test("preview renders a DRAFT through the real renderer", async () => {
   const r = await fetch(`${base}/api/preview`, {
     method: "POST",
