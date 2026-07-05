@@ -4,6 +4,7 @@ import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
 import { Nav } from "../src/components/Nav";
 import { AccountGate } from "../src/components/AccountGate";
+import { UpgradeCard } from "../src/components/UpgradeCard";
 import { adminHeaders } from "../src/lib/api";
 import { isValidHandle } from "../src/lib/identity";
 import { listTemplates } from "../src/lib/registry";
@@ -139,6 +140,7 @@ export default function ClaimPage(): React.ReactElement {
   const [claimed, setClaimed] = useState<{ identityId: string; handle: string } | null>(null);
   const [published, setPublished] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const normalized = handle.toLowerCase().trim();
@@ -183,8 +185,12 @@ export default function ClaimPage(): React.ReactElement {
         }),
       });
       if (r.status === 401) {
-        // Instance runs with LINKS_ADMIN_TOKEN — ask for it right here.
         setLocked(true);
+        return;
+      }
+      if (r.status === 402) {
+        // Free profile used — show the two-door upgrade.
+        setNeedsUpgrade(true);
         return;
       }
       const j = (await r.json()) as {
@@ -265,6 +271,10 @@ export default function ClaimPage(): React.ReactElement {
               void claim();
             }}
           />
+        </div>
+      ) : needsUpgrade ? (
+        <div className="w-full max-w-xl mt-12">
+          <UpgradeCard onUnlocked={() => setNeedsUpgrade(false)} />
         </div>
       ) : (
       <section className="w-full max-w-xl mt-12 bg-ink-900 border border-ink-700 rounded-2xl p-6 sm:p-8 shadow-glow animate-fade-in">

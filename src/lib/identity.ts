@@ -193,4 +193,5 @@ export const COLLECTIONS = {
   challenges: "challenges",
   sessions: "sessions",
   grants: "grants",
+  entitlements: "entitlements",
 } as const;

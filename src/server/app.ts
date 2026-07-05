@@ -13,6 +13,7 @@ import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
 import { accounts } from "./accounts";
+import { billing, mountWebhook } from "./billing";
 import { config } from "./config";
 import { db } from "./db";
 import { grants } from "./grants";
@@ -39,6 +40,9 @@ export function createApp(): Express {
   });
 
   app.use(cors());
+  // Stripe webhook needs the raw body for signature verification —
+  // mounted before the JSON parser touches anything.
+  mountWebhook(app);
   app.use(express.json({ limit: "8mb" }));
 
   // ── Health — reports every dependency ────────────────────────────────────
@@ -62,6 +66,7 @@ export function createApp(): Express {
 
   // ── API ───────────────────────────────────────────────────────────────────
   app.use("/api/auth", accounts);
+  app.use("/api/billing", billing);
   app.use("/api/handles", handles);
   app.use("/api/identities/:id/grants", grants);
   app.use("/api/identities", identities);

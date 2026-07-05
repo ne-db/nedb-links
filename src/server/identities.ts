@@ -21,6 +21,7 @@ import { getBlock, getTemplate, manifestCapabilities } from "../lib/registry";
 import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
 import { authOf, requireUser } from "./auth";
+import { canClaimAnother } from "./billing";
 import { grantsOf, hasRole, writeOwnerGrant } from "./grants";
 import { wrap } from "./util";
 import { causalParent, db } from "./db";
@@ -125,6 +126,13 @@ identities.post("/", requireUser, wrap(async (req, res) => {
   }
   if (await getHandleRecord(handle)) {
     res.status(409).json({ error: "handle taken" });
+    return;
+  }
+
+  // The claim gate: free tier is one profile; unlimited via a one-time
+  // pay-what-you-want or by holding ITC on the account address.
+  if (!(await canClaimAnother(auth))) {
+    res.status(402).json({ error: "free plan includes one profile", code: "upgrade_required" });
     return;
   }
 
