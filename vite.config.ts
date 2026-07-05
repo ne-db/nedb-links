@@ -42,6 +42,20 @@ export default defineConfig(({ mode }) => {
   const clientPort = Number(env.VITE_PORT || 3000);
   const apiTarget = env.LINKS_API_URL || `http://localhost:${apiPort}`;
 
+  // Paths the DEV SERVER owns (the editor SPA + Vite internals). Everything
+  // else — /:handle profiles, /go click redirects, /api — belongs to the
+  // Express server, exactly like production. Without this, published
+  // profiles 404 into the SPA during `npm run dev` (found live by Mark:
+  // "View" showed the not-claimed page for a claimed handle).
+  const SPA_PREFIXES = ["/identities", "/edit", "/src", "/node_modules", "/assets"];
+  function servedByVite(url: string): boolean {
+    const path = url.split("?")[0];
+    if (path === "/" || path === "/index.html") return true;
+    if (path.startsWith("/@")) return true; // vite client, HMR, virtual modules
+    if (path.includes(".")) return true; // files with extensions (favicon, ts, css…)
+    return SPA_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+  }
+
   return {
     plugins: [react(), portalPlugin(), portalRouteResolver()],
     server: {
@@ -49,6 +63,12 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true,
       proxy: {
         "/api": { target: apiTarget, changeOrigin: true },
+        // Catch-all: public surfaces render on the API server in dev too.
+        "/": {
+          target: apiTarget,
+          changeOrigin: true,
+          bypass: (req) => (req.url && servedByVite(req.url) ? req.url : undefined),
+        },
       },
     },
     resolve: {
