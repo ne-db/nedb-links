@@ -121,7 +121,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
     "w-full rounded-xl bg-accent text-ink-950 font-bold py-3.5 transition hover:brightness-110 disabled:opacity-40";
   const ghostBtn =
     "w-full rounded-xl border border-accent/50 text-accent-soft font-bold py-3 transition hover:bg-accent/10";
-  const backBtn = "mt-3 w-full text-sm text-slate-500 hover:text-slate-300 transition";
+  const backBtn = "mt-3 w-full text-sm text-fg-subtle hover:text-fg-muted transition";
 
   if (step === "welcome") {
     return (
@@ -134,7 +134,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
           <br />
           Just your words.
         </h2>
-        <ul className="mt-6 grid gap-3 text-sm text-slate-300">
+        <ul className="mt-6 grid gap-3 text-sm text-fg-muted">
           <li className="flex gap-3">
             <span className="text-accent shrink-0">✓</span>
             <span>
@@ -165,7 +165,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
             I already have my words
           </button>
         </div>
-        <p className="mt-5 text-[11px] text-slate-500 text-center">
+        <p className="mt-5 text-[11px] text-fg-subtle text-center">
           Your words are generated in this browser and never leave it. The server only
           ever sees your public address.
         </p>
@@ -188,8 +188,8 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
               key={i}
               className="flex items-baseline gap-2 bg-ink-850 border border-ink-700 rounded-lg px-3 py-2"
             >
-              <span className="font-mono text-[10px] text-slate-500">{i + 1}</span>
-              <span className="font-mono text-sm text-slate-100">{w}</span>
+              <span className="font-mono text-[10px] text-fg-subtle">{i + 1}</span>
+              <span className="font-mono text-sm text-fg">{w}</span>
             </div>
           ))}
         </div>
@@ -221,13 +221,13 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
         <h2 className="font-display text-2xl font-bold mt-2 text-center">
           Three words from your paper
         </h2>
-        <p className="text-slate-400 text-sm text-center mt-2">
+        <p className="text-fg-muted text-sm text-center mt-2">
           This is the moment that saves people. Check the paper, not your memory.
         </p>
         <div className="mt-5 grid gap-3">
           {checkIdx.map((wordIndex, i) => (
             <div key={wordIndex}>
-              <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-500 mb-1">
+              <label className="block font-mono text-[10px] uppercase tracking-widest text-fg-subtle mb-1">
                 word #{wordIndex + 1}
               </label>
               <input
@@ -241,7 +241,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
                 }
                 autoFocus={i === 0}
                 autoComplete="off"
-                className="w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-slate-100 font-mono"
+                className="w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-fg font-mono"
               />
             </div>
           ))}
@@ -272,7 +272,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
         <h2 className="font-display text-2xl font-bold mt-2 text-center">
           Enter your twelve words
         </h2>
-        <p className="text-slate-400 text-sm text-center mt-2">
+        <p className="text-fg-muted text-sm text-center mt-2">
           In order, separated by spaces. They stay in this browser.
         </p>
         <textarea
@@ -281,7 +281,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
           placeholder="word1 word2 word3 …"
           autoFocus
           rows={3}
-          className="mt-5 w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-slate-100 font-mono text-sm"
+          className="mt-5 w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-fg font-mono text-sm"
         />
         {importText.trim() && !valid && (
           <p className="mt-2 text-signal-amber text-xs font-mono">
@@ -309,7 +309,7 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
       <p className="font-mono text-xs uppercase tracking-widest text-accent-soft">
         signing you in
       </p>
-      <p className="text-slate-400 text-sm mt-3">
+      <p className="text-fg-muted text-sm mt-3">
         Your words are signing one login message — they never leave this device.
       </p>
     </div>

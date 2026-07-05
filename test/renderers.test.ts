@@ -217,6 +217,20 @@ test("placeholder URLs are saveable but never rendered on any surface", async ()
   assert.ok(v.includes("item1.URL:https://real.example.com"), "vCard keeps filled URLs");
 });
 
+// ── Custom palette (MySpace energy, Links safety) ────────────────────────────
+
+test("a custom palette overrides the named theme on every surface", async () => {
+  const custom = { bg: "#112233", card: "#223344", text: "#f0f0f0", sub: "#aabbcc", accent: "#ff6600" };
+  const m = fixture({ theme: "midnight", themeCustom: custom });
+  const html = renderProfileHtml(m, CTX);
+  assert.ok(html.includes("background: #112233"), "custom page color renders");
+  assert.ok(html.includes("#ff6600"), "custom accent renders");
+  assert.equal(html.includes("#070a12"), false, "named theme fully overridden");
+
+  const card = await renderCardHtml(m, CTX);
+  assert.ok(card.includes("#ff6600"), "business card follows the custom palette");
+});
+
 // ── Profile page ─────────────────────────────────────────────────────────────
 
 test("profile page escapes content and routes clicks through /go", () => {

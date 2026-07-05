@@ -24,8 +24,8 @@ interface SaveReceipt {
 }
 
 const inputCls =
-  "w-full bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent/60 text-slate-100 placeholder:text-slate-600";
-const labelCls = "block font-mono text-[10px] uppercase tracking-widest text-slate-500 mb-1";
+  "w-full bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint";
+const labelCls = "block font-mono text-[10px] uppercase tracking-widest text-fg-subtle mb-1";
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
@@ -95,7 +95,7 @@ function BlockFields({
             <div key={i} className="grid grid-cols-[1fr_2fr_36px] gap-2">
               <input className={inputCls} placeholder="network (instagram…)" value={str(l.network)} onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, network: e.target.value } : x)))} />
               <input className={inputCls} placeholder="https://…" value={str(l.url)} onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))} />
-              <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className="rounded-lg border border-ink-700 text-slate-400 hover:text-signal-red hover:border-signal-red/50 transition" title="Remove">
+              <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className="rounded-lg border border-ink-700 text-fg-muted hover:text-signal-red hover:border-signal-red/50 transition" title="Remove">
                 ✕
               </button>
             </div>
@@ -107,7 +107,7 @@ function BlockFields({
       );
     }
     default:
-      return <p className="text-xs text-slate-500 font-mono">unknown block type: {block.type}</p>;
+      return <p className="text-xs text-fg-subtle font-mono">unknown block type: {block.type}</p>;
   }
 }
 
@@ -171,6 +171,7 @@ export default function EditPage(): React.ReactElement {
           bio: manifest.bio,
           avatar: manifest.avatar,
           theme: manifest.theme,
+          themeCustom: manifest.themeCustom,
           blocks: manifest.blocks,
         });
         if (seq === previewSeq.current) setPreviewHtml(html);
@@ -217,6 +218,7 @@ export default function EditPage(): React.ReactElement {
           bio: manifest.bio,
           avatar: manifest.avatar,
           theme: manifest.theme,
+          themeCustom: manifest.themeCustom ?? null,
           blocks: manifest.blocks,
         },
       );
@@ -268,7 +270,7 @@ export default function EditPage(): React.ReactElement {
     return (
       <>
         <Nav />
-        <main className="max-w-5xl mx-auto px-5 py-16 text-center text-slate-400">
+        <main className="max-w-5xl mx-auto px-5 py-16 text-center text-fg-muted">
           {error ? <p className="text-signal-red font-mono text-sm">{error}</p> : <p>Loading…</p>}
         </main>
       </>
@@ -284,7 +286,7 @@ export default function EditPage(): React.ReactElement {
         {/* ── Header bar ─────────────────────────────────────────────────── */}
         <header className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/identities" className="text-slate-500 hover:text-slate-300 transition" title="All identities">
+            <Link href="/identities" className="text-fg-subtle hover:text-fg-muted transition" title="All identities">
               ←
             </Link>
             <h1 className="font-display text-2xl font-bold truncate">{manifest.displayName}</h1>
@@ -302,7 +304,7 @@ export default function EditPage(): React.ReactElement {
           </div>
           <div className="flex items-center gap-2">
             {manifest.status === "published" && (
-              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-ink-700 text-slate-300 text-sm font-semibold px-3.5 py-2 hover:border-accent/50 hover:text-accent-soft transition">
+              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-ink-700 text-fg-muted text-sm font-semibold px-3.5 py-2 hover:border-accent/50 hover:text-accent-soft transition">
                 View ↗
               </a>
             )}
@@ -317,7 +319,7 @@ export default function EditPage(): React.ReactElement {
 
         {/* Engine receipt — provenance made visible */}
         {receipt && (
-          <p className="mt-2 font-mono text-[11px] text-slate-500">
+          <p className="mt-2 font-mono text-[11px] text-fg-subtle">
             engine receipt: seq {receipt.seq} · head {receipt.head.slice(0, 16)}… — every save is a
             hash-chained, causally-linked write
           </p>
@@ -343,22 +345,85 @@ export default function EditPage(): React.ReactElement {
                 <textarea className={`${inputCls} min-h-[56px]`} value={manifest.bio ?? ""} onChange={(e) => patch({ bio: e.target.value || undefined })} />
               </div>
               <div>
-                <label className={labelCls}>Theme</label>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(THEMES).map(([key, t]) => (
-                    <button
-                      key={key}
-                      onClick={() => patch({ theme: key })}
-                      title={key}
-                      className={`h-9 px-3 rounded-lg border text-xs font-bold transition ${
-                        (manifest.theme ?? "midnight") === key ? "border-accent text-accent-soft" : "border-ink-700 text-slate-400 hover:border-ink-700"
-                      }`}
-                      style={{ background: t.bg }}
-                    >
-                      <span style={{ color: t.accent }}>●</span> {key}
-                    </button>
-                  ))}
+                <div className="flex items-baseline justify-between">
+                  <label className={labelCls}>Theme</label>
+                  <button
+                    onClick={() => {
+                      if (manifest.themeCustom) {
+                        patch({ themeCustom: undefined });
+                      } else {
+                        const base = THEMES[manifest.theme ?? "pro"] ?? THEMES.pro;
+                        patch({
+                          themeCustom: {
+                            bg: base.bg.slice(0, 7),
+                            card: base.card.slice(0, 7),
+                            text: base.text.slice(0, 7),
+                            sub: base.sub.slice(0, 7),
+                            accent: base.accent.slice(0, 7),
+                          },
+                        });
+                      }
+                    }}
+                    className={`font-mono text-[10px] uppercase tracking-widest transition ${
+                      manifest.themeCustom
+                        ? "text-signal-amber hover:text-signal-red"
+                        : "text-accent-soft hover:underline underline-offset-4"
+                    }`}
+                  >
+                    {manifest.themeCustom ? "✕ reset to theme" : "✦ customize colors"}
+                  </button>
                 </div>
+                {!manifest.themeCustom ? (
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(THEMES).map(([key, t]) => (
+                      <button
+                        key={key}
+                        onClick={() => patch({ theme: key })}
+                        title={key}
+                        className={`h-9 px-3 rounded-lg border text-xs font-bold transition ${
+                          (manifest.theme ?? "pro") === key ? "border-accent text-accent-soft" : "border-ink-700 text-fg-muted hover:border-ink-700"
+                        }`}
+                        style={{ background: t.bg }}
+                      >
+                        <span style={{ color: t.accent }}>●</span> {key}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-5 gap-2">
+                    {([
+                      ["bg", "page"],
+                      ["card", "cards"],
+                      ["text", "text"],
+                      ["sub", "muted"],
+                      ["accent", "accent"],
+                    ] as const).map(([key, label]) => (
+                      <div key={key} className="text-center">
+                        <input
+                          type="color"
+                          value={manifest.themeCustom?.[key] ?? "#000000"}
+                          onChange={(e) =>
+                            patch({
+                              themeCustom: {
+                                ...(manifest.themeCustom as NonNullable<typeof manifest.themeCustom>),
+                                [key]: e.target.value,
+                              },
+                            })
+                          }
+                          className="h-10 w-full rounded-lg border border-ink-700 bg-ink-850 cursor-pointer"
+                          title={label}
+                        />
+                        <span className="mt-1 block font-mono text-[9px] uppercase tracking-widest text-fg-subtle">
+                          {label}
+                        </span>
+                      </div>
+                    ))}
+                    <p className="col-span-5 text-[11px] text-fg-subtle">
+                      Your page, your colors — the preview is the real renderer, so what
+                      you see is exactly what visitors get.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -369,17 +434,17 @@ export default function EditPage(): React.ReactElement {
                 return (
                   <div key={b.id} className="bg-ink-900 border border-ink-800 rounded-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-slate-500">
+                      <span className="font-mono text-[11px] uppercase tracking-widest text-fg-subtle">
                         {def?.name ?? b.type}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => move(i, -1)} disabled={i === 0} className="w-7 h-7 rounded-lg border border-ink-700 text-slate-400 hover:text-accent-soft hover:border-accent/50 transition disabled:opacity-30" title="Move up">
+                        <button onClick={() => move(i, -1)} disabled={i === 0} className="w-7 h-7 rounded-lg border border-ink-700 text-fg-muted hover:text-accent-soft hover:border-accent/50 transition disabled:opacity-30" title="Move up">
                           ↑
                         </button>
-                        <button onClick={() => move(i, 1)} disabled={i === ordered.length - 1} className="w-7 h-7 rounded-lg border border-ink-700 text-slate-400 hover:text-accent-soft hover:border-accent/50 transition disabled:opacity-30" title="Move down">
+                        <button onClick={() => move(i, 1)} disabled={i === ordered.length - 1} className="w-7 h-7 rounded-lg border border-ink-700 text-fg-muted hover:text-accent-soft hover:border-accent/50 transition disabled:opacity-30" title="Move down">
                           ↓
                         </button>
-                        <button onClick={() => setBlocks(ordered.filter((x) => x.id !== b.id))} className="w-7 h-7 rounded-lg border border-ink-700 text-slate-400 hover:text-signal-red hover:border-signal-red/50 transition" title="Remove block">
+                        <button onClick={() => setBlocks(ordered.filter((x) => x.id !== b.id))} className="w-7 h-7 rounded-lg border border-ink-700 text-fg-muted hover:text-signal-red hover:border-signal-red/50 transition" title="Remove block">
                           ✕
                         </button>
                       </div>
@@ -391,7 +456,7 @@ export default function EditPage(): React.ReactElement {
 
               {/* Add block */}
               <div className="relative">
-                <button onClick={() => setAddOpen((v) => !v)} className="w-full rounded-2xl border border-dashed border-ink-700 text-slate-400 font-semibold py-3.5 hover:border-accent/50 hover:text-accent-soft transition">
+                <button onClick={() => setAddOpen((v) => !v)} className="w-full rounded-2xl border border-dashed border-ink-700 text-fg-muted font-semibold py-3.5 hover:border-accent/50 hover:text-accent-soft transition">
                   + Add block
                 </button>
                 {addOpen && (
@@ -406,7 +471,7 @@ export default function EditPage(): React.ReactElement {
                         className="text-left rounded-xl px-3.5 py-2.5 hover:bg-ink-850 transition"
                       >
                         <span className="font-bold text-sm">{def.name}</span>
-                        <span className="block text-xs text-slate-500">{def.description}</span>
+                        <span className="block text-xs text-fg-subtle">{def.description}</span>
                       </button>
                     ))}
                   </div>
@@ -420,7 +485,7 @@ export default function EditPage(): React.ReactElement {
           {/* ── Right: live preview via the REAL renderer ────────────────── */}
           <aside className="lg:sticky lg:top-20">
             <div className="flex items-center justify-between mb-2 px-1">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-fg-subtle">
                 Live preview — rendered by the exact public renderer
               </span>
             </div>

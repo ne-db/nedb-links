@@ -1,13 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="pro">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
     <title>NEDB Links — one handle, every surface</title>
     <meta
       name="description"
-      content="Claim your handle and publish your identity everywhere: profile page, business card, QR code, vCard, JSON. Self-hostable, versioned, tamper-evident — powered by the NEDB engine."
+      content="Your professional identity, owned like a wallet. Claim a handle and publish everywhere: profile page, business card, QR code, vCard. Self-hostable, versioned, tamper-evident — powered by the NEDB engine."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,6 +14,18 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <!-- Restore persisted theme before first paint to prevent flash -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("links-theme");
+          document.documentElement.setAttribute(
+            "data-theme",
+            t === "native" ? "native" : "pro",
+          );
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -13,14 +13,21 @@ export default {
         mono:    ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
+        // Surfaces + borders — both themes share these utilities;
+        // the CSS variables decide what they mean.
         ink: {
-          // These reference CSS vars so both themes share the same Tailwind utilities.
-          // When --ink-950 changes, bg-ink-950 changes everywhere automatically.
           950: "rgb(var(--ink-950) / <alpha-value>)",
           900: "rgb(var(--ink-900) / <alpha-value>)",
           850: "rgb(var(--ink-850) / <alpha-value>)",
           800: "rgb(var(--ink-800) / <alpha-value>)",
           700: "rgb(var(--ink-700) / <alpha-value>)",
+        },
+        // Text — semantic, never hardcode slate in components.
+        fg: {
+          DEFAULT: "rgb(var(--fg) / <alpha-value>)",
+          muted:   "rgb(var(--fg-muted) / <alpha-value>)",
+          subtle:  "rgb(var(--fg-subtle) / <alpha-value>)",
+          faint:   "rgb(var(--fg-faint) / <alpha-value>)",
         },
         accent: {
           DEFAULT: "rgb(var(--accent) / <alpha-value>)",
@@ -28,25 +35,24 @@ export default {
           glow:    "rgb(var(--accent-glow) / <alpha-value>)",
         },
         signal: {
-          green: "#34d399",
-          amber: "#fbbf24",
-          red:   "#f87171",
-          cyan:  "#22d3ee",
+          green: "#10b981",
+          amber: "#d97706",
+          red:   "#ef4444",
+          cyan:  "#0891b2",
         },
       },
       boxShadow: {
-        glow:    "0 0 0 1px rgba(var(--accent)/0.25), 0 8px 40px -12px rgba(var(--accent)/0.45)",
-        "glow-lg":"0 0 0 1px rgba(var(--accent)/0.3), 0 20px 60px -15px rgba(var(--accent)/0.35)",
+        glow:     "0 0 0 1px rgb(var(--accent) / 0.18), 0 8px 40px -12px rgb(var(--accent) / var(--glow-alpha))",
+        "glow-lg": "0 0 0 1px rgb(var(--accent) / 0.22), 0 20px 60px -15px rgb(var(--accent) / var(--glow-alpha))",
+        card:     "0 1px 2px rgb(15 23 42 / 0.06), 0 4px 16px -8px rgb(15 23 42 / 0.10)",
       },
       animation: {
-        "fade-in":   "fade-in 0.4s ease both",
-        "slide-up":  "slide-up 0.5s cubic-bezier(0.16,1,0.3,1) both",
-        "pulse-glow":"pulse-glow 3s ease-in-out infinite",
+        "fade-in":  "fade-in 0.4s ease both",
+        "slide-up": "slide-up 0.5s cubic-bezier(0.16,1,0.3,1) both",
       },
       keyframes: {
-        "fade-in":   { from: { opacity: "0" }, to: { opacity: "1" } },
-        "slide-up":  { from: { opacity: "0", transform: "translateY(20px)" }, to: { opacity: "1", transform: "translateY(0)" } },
-        "pulse-glow":{ "0%,100%": { opacity: "0.6" }, "50%": { opacity: "1" } },
+        "fade-in":  { from: { opacity: "0" }, to: { opacity: "1" } },
+        "slide-up": { from: { opacity: "0", transform: "translateY(20px)" }, to: { opacity: "1", transform: "translateY(0)" } },
       },
     },
   },

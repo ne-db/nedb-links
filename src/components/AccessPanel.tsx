@@ -94,10 +94,10 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
   return (
     <div className="bg-ink-900 border border-ink-800 rounded-2xl p-5">
       <div className="flex items-baseline justify-between">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-slate-500">
+        <span className="font-mono text-[11px] uppercase tracking-widest text-fg-subtle">
           Access
         </span>
-        <span className="text-[11px] text-slate-500">
+        <span className="text-[11px] text-fg-subtle">
           share by address — like sending to a wallet
         </span>
       </div>
@@ -117,7 +117,7 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
                   ? "text-accent border-accent/40 bg-accent/10"
                   : g.role === "editor"
                     ? "text-signal-green border-signal-green/40 bg-signal-green/10"
-                    : "text-slate-400 border-ink-700"
+                    : "text-fg-muted border-ink-700"
               }`}
             >
               {g.role}
@@ -125,7 +125,7 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
             <span className="flex-1" />
             <button
               onClick={() => void revoke(g.address)}
-              className="text-slate-500 hover:text-signal-red transition text-xs"
+              className="text-fg-subtle hover:text-signal-red transition text-xs"
               title="Revoke access"
             >
               ✕
@@ -139,12 +139,12 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="itc1q… address to share with"
-          className="bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-accent/60 text-slate-100 placeholder:text-slate-600"
+          className="bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as "editor" | "viewer" | "owner")}
-          className="bg-ink-850 border border-ink-700 rounded-lg px-2 py-2 text-sm text-slate-200 outline-none focus:border-accent/60"
+          className="bg-ink-850 border border-ink-700 rounded-lg px-2 py-2 text-sm text-fg outline-none focus:border-accent/60"
         >
           <option value="editor">editor</option>
           <option value="viewer">viewer</option>

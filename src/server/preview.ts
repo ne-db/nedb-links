@@ -33,6 +33,15 @@ const previewSchema = z.object({
   bio: z.string().max(600).optional(),
   avatar: z.string().max(200_000).optional(),
   theme: z.string().max(40).optional(),
+  themeCustom: z
+    .object({
+      bg: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      card: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      text: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      sub: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    })
+    .optional(),
   blocks: z
     .array(
       z.object({
@@ -64,7 +73,8 @@ preview.post("/", requireUser, wrap(async (req, res) => {
     displayName: d.displayName,
     bio: d.bio,
     avatar: d.avatar,
-    theme: d.theme ?? "midnight",
+    theme: d.theme ?? "pro",
+    themeCustom: d.themeCustom,
     blocks: d.blocks as Block[],
     capabilities: manifestCapabilities(d.blocks as Block[]),
     renderers: [],

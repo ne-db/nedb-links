@@ -24,7 +24,7 @@ export async function renderCardHtml(
   m: IdentityManifest,
   ctx: RenderContext,
 ): Promise<string> {
-  const t = THEMES[m.theme ?? "midnight"] ?? THEMES.midnight;
+  const t = m.themeCustom ?? THEMES[m.theme ?? "pro"] ?? THEMES.pro;
   const origin = ctx.origin;
   const profileUrl = `${origin}/${m.handle}`;
   const qrSvg = await buildQrSvg(shareUrl(m, origin), {

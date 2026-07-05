@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import {
   COLLECTIONS,
+  HEX_COLOR_RE,
   isValidHandle,
   newIdentityId,
   SCHEMA_VERSION,
@@ -38,11 +39,16 @@ const blockSchema = z.object({
   data: z.record(z.unknown()),
 });
 
+const hexColor = z.string().regex(HEX_COLOR_RE, "colors must be #rrggbb");
+
 const manifestPatchSchema = z.object({
   displayName: z.string().min(1).max(120).optional(),
   bio: z.string().max(600).optional(),
   avatar: z.string().max(200_000).optional(),
   theme: z.string().max(40).optional(),
+  themeCustom: z
+    .object({ bg: hexColor, card: hexColor, text: hexColor, sub: hexColor, accent: hexColor })
+    .nullish(),
   blocks: z.array(blockSchema).max(200).optional(),
 });
 
@@ -153,7 +159,7 @@ identities.post("/", requireUser, wrap(async (req, res) => {
     displayName: body.data.displayName,
     bio: seeded.bio,
     template: template?.id,
-    theme: seeded.theme ?? "midnight",
+    theme: seeded.theme ?? "pro",
     blocks: seeded.blocks,
     capabilities: manifestCapabilities(seeded.blocks),
     renderers: [],
@@ -282,6 +288,11 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
   const next: IdentityManifest = {
     ...current,
     ...patch.data,
+    // Explicit null clears the custom palette back to the named theme.
+    themeCustom:
+      patch.data.themeCustom === null
+        ? undefined
+        : patch.data.themeCustom ?? current.themeCustom,
     blocks,
     capabilities: manifestCapabilities(blocks),
     updatedAt: new Date().toISOString(),
