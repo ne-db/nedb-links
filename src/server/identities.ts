@@ -20,7 +20,8 @@ import {
 import { getBlock, getTemplate, manifestCapabilities } from "../lib/registry";
 import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
-import { requireAdmin } from "./auth";
+import { authOf, requireUser } from "./auth";
+import { grantsOf, hasRole, writeOwnerGrant } from "./grants";
 import { wrap } from "./util";
 import { causalParent, db } from "./db";
 
@@ -96,7 +97,12 @@ handles.get("/:handle/availability", wrap(async (req, res) => {
 }));
 
 /** POST /api/identities — claim a handle, seed from a template, own it. */
-identities.post("/", requireAdmin, wrap(async (req, res) => {
+identities.post("/", requireUser, wrap(async (req, res) => {
+  const auth = authOf(res);
+  if (!auth) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
   const body = z
     .object({
       handle: z.string(),
@@ -134,7 +140,7 @@ identities.post("/", requireAdmin, wrap(async (req, res) => {
     schemaVersion: SCHEMA_VERSION,
     identityId,
     identityType: seeded.identityType,
-    owner: "admin",
+    owner: auth.address,
     handle,
     displayName: body.data.displayName,
     bio: seeded.bio,
@@ -175,6 +181,9 @@ identities.post("/", requireAdmin, wrap(async (req, res) => {
     { evidence: `identity created for handle ${handle}` },
   );
 
+  // Ownership grant — the root of this identity's authority chain.
+  await writeOwnerGrant(identityId, auth.address, `claim of ${handle}`);
+
   // Respond with the manifest THIS server constructed — never the engine's
   // put echo, whose shape can vary across nedbd versions. The API response
   // is our contract. (Found live by Mark: an older daemon's echo lacked
@@ -184,11 +193,26 @@ identities.post("/", requireAdmin, wrap(async (req, res) => {
 
 /** GET /api/identities — every identity this instance owns, newest first.
  *  Summaries only; the editor loads full manifests by id. */
-identities.get("/", requireAdmin, wrap(async (_req, res) => {
-  const rows = await db.query(
-    `FROM ${COLLECTIONS.identities} ORDER BY updatedAt DESC LIMIT 500`,
-  );
-  const list = (rows as unknown as IdentityManifest[]).map((m) => ({
+identities.get("/", requireUser, wrap(async (_req, res) => {
+  const auth = authOf(res);
+  if (!auth) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  let manifests: IdentityManifest[];
+  if (auth.isOperator) {
+    const rows = await db.query(
+      `FROM ${COLLECTIONS.identities} ORDER BY updatedAt DESC LIMIT 500`,
+    );
+    manifests = rows as unknown as IdentityManifest[];
+  } else {
+    const mine = await grantsOf(auth.address);
+    const loaded = await Promise.all(mine.map((g) => getManifest(g.identityId)));
+    manifests = loaded
+      .filter((m): m is IdentityManifest => m !== null)
+      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  }
+  const list = manifests.map((m) => ({
     identityId: m.identityId,
     handle: m.handle,
     displayName: m.displayName,
@@ -204,8 +228,14 @@ identities.get("/", requireAdmin, wrap(async (_req, res) => {
 }));
 
 /** GET /api/identities/:id — the manifest, straight from the engine. */
-identities.get("/:id", wrap(async (req, res) => {
-  const manifest = await getManifest(String(req.params.id));
+identities.get("/:id", requireUser, wrap(async (req, res) => {
+  const identityId = String(req.params.id);
+  const auth = authOf(res);
+  if (!auth || !(await hasRole(identityId, auth, "viewer"))) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const manifest = await getManifest(identityId);
   if (!manifest) {
     res.status(404).json({ error: "not found" });
     return;
@@ -215,8 +245,13 @@ identities.get("/:id", wrap(async (req, res) => {
 
 /** PUT /api/identities/:id — save the manifest (draft edits).
  *  Full-manifest replacement with caused_by chaining to the prior version. */
-identities.put("/:id", requireAdmin, wrap(async (req, res) => {
+identities.put("/:id", requireUser, wrap(async (req, res) => {
   const identityId = String(req.params.id);
+  const auth = authOf(res);
+  if (!auth || !(await hasRole(identityId, auth, "editor"))) {
+    res.status(403).json({ error: "editor role required" });
+    return;
+  }
   const current = await getManifest(identityId);
   if (!current) {
     res.status(404).json({ error: "not found" });
@@ -258,8 +293,13 @@ identities.put("/:id", requireAdmin, wrap(async (req, res) => {
 
 /** POST /api/identities/:id/publish — flip draft to published.
  *  TRACE from this write walks the exact edits that went into it. */
-identities.post("/:id/publish", requireAdmin, wrap(async (req, res) => {
+identities.post("/:id/publish", requireUser, wrap(async (req, res) => {
   const identityId = String(req.params.id);
+  const auth = authOf(res);
+  if (!auth || !(await hasRole(identityId, auth, "editor"))) {
+    res.status(403).json({ error: "editor role required" });
+    return;
+  }
   const current = await getManifest(identityId);
   if (!current) {
     res.status(404).json({ error: "not found" });

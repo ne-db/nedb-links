@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Identity publishing on NEDB — the developer-friendly Linktree. Claim a handle, publish everywhere. A Portal-powered application over the NEDB engine.",
+  "description": "Identity publishing on NEDB \u2014 the developer-friendly Linktree. Claim a handle, publish everywhere. A Portal-powered application over the NEDB engine.",
   "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,magenta \"portal dev\" \"npm run dev:api\"",
@@ -16,13 +16,20 @@
     "audit": "portal audit",
     "guard": "portal guard",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/renderers.test.ts",
-    "test:api": "tsx --test test/api.test.ts test/auth.test.ts"
+    "test": "tsx --test test/renderers.test.ts test/wallet.test.ts",
+    "test:api": "tsx --test test/api.test.ts test/auth.test.ts test/seedauth.test.ts"
   },
   "dependencies": {
+    "@bitcoinerlab/secp256k1": "^1.2.0",
     "@interchained/portal-react": "^0.1.2",
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@scure/bip39": "^2.2.0",
+    "bip32": "^5.0.1",
     "cors": "^2.8.5",
+    "ecpair": "^3.0.1",
     "express": "^4.19.2",
+    "interchainedjs-lib": "github:ethgr0wth/interchainedjs-lib",
     "nedb-engine-client": "^2.6.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

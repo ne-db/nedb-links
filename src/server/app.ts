@@ -12,8 +12,10 @@ import { join, resolve } from "node:path";
 import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
+import { accounts } from "./accounts";
 import { config } from "./config";
 import { db } from "./db";
+import { grants } from "./grants";
 import { handles, identities } from "./identities";
 import { preview } from "./preview";
 import { render } from "./render";
@@ -59,7 +61,9 @@ export function createApp(): Express {
   });
 
   // ── API ───────────────────────────────────────────────────────────────────
+  app.use("/api/auth", accounts);
   app.use("/api/handles", handles);
+  app.use("/api/identities/:id/grants", grants);
   app.use("/api/identities", identities);
   app.use("/api/preview", preview);
 

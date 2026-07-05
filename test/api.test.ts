@@ -20,9 +20,36 @@ delete process.env.LINKS_ADMIN_TOKEN; // open mode; auth is covered in auth.test
 
 const { createApp, ensureDatabase } = await import("../src/server/app");
 const { db } = await import("../src/server/db");
+const { deriveAccount, generatePhrase, signMessage } = await import("../src/lib/wallet");
 
 let server: Server;
 let base: string;
+let session = "";
+
+/** Wallet login — the suite authenticates like a real user. */
+async function walletLogin(): Promise<string> {
+  const phrase = generatePhrase();
+  const { address } = await deriveAccount(phrase);
+  const chal = (await (
+    await fetch(`${base}/api/auth/challenge`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ address }),
+    })
+  ).json()) as { challengeId: string; message: string };
+  const signature = await signMessage(phrase, chal.message);
+  const r = await fetch(`${base}/api/auth/verify`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ challengeId: chal.challengeId, address, signature }),
+  });
+  assert.equal(r.status, 200, "wallet login succeeds");
+  return ((await r.json()) as { token: string }).token;
+}
+
+function authed(): Record<string, string> {
+  return { authorization: `Bearer ${session}`, "content-type": "application/json" };
+}
 
 before(async () => {
   const reachable = await db.ping();
@@ -35,6 +62,7 @@ before(async () => {
   const addr = server.address();
   assert.ok(addr && typeof addr === "object");
   base = `http://127.0.0.1:${addr.port}`;
+  session = await walletLogin();
 });
 
 after(async () => {
@@ -69,7 +97,7 @@ test("availability: free, invalid, reserved", async () => {
 test("claim seeds a complete identity from a template", async () => {
   const r = await fetch(`${base}/api/identities`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: authed(),
     body: JSON.stringify({ handle: "smoketest", displayName: "Smoke Test", template: "developer" }),
   });
   assert.equal(r.status, 201);
@@ -84,14 +112,14 @@ test("claim seeds a complete identity from a template", async () => {
 test("double claim is rejected by read-back verification", async () => {
   const r = await fetch(`${base}/api/identities`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: authed(),
     body: JSON.stringify({ handle: "smoketest", displayName: "Imposter" }),
   });
   assert.equal(r.status, 409);
 });
 
 test("list returns summaries newest first", async () => {
-  const r = await fetch(`${base}/api/identities`);
+  const r = await fetch(`${base}/api/identities`, { headers: authed() });
   assert.equal(r.status, 200);
   const j = (await r.json()) as { identities: Array<{ identityId: string; handle: string; blockCount: number }> };
   assert.equal(j.identities.length, 1);
@@ -100,14 +128,14 @@ test("list returns summaries newest first", async () => {
 });
 
 test("edit chains provenance and revalidates blocks", async () => {
-  const get = (await (await fetch(`${base}/api/identities/${identityId}`)).json()) as { manifest: { blocks: Array<Record<string, unknown>> } };
+  const get = (await (await fetch(`${base}/api/identities/${identityId}`, { headers: authed() })).json()) as { manifest: { blocks: Array<Record<string, unknown>> } };
   const blocks = [
     ...get.manifest.blocks,
     { id: "blk_apitest", type: "link", order: get.manifest.blocks.length, data: { label: "API test", url: "https://example.com" } },
   ];
   const r = await fetch(`${base}/api/identities/${identityId}`, {
     method: "PUT",
-    headers: { "content-type": "application/json" },
+    headers: authed(),
     body: JSON.stringify({ blocks, bio: "edited by the live API suite" }),
   });
   assert.equal(r.status, 200);
@@ -121,7 +149,7 @@ test("edit chains provenance and revalidates blocks", async () => {
 
   const bad = await fetch(`${base}/api/identities/${identityId}`, {
     method: "PUT",
-    headers: { "content-type": "application/json" },
+    headers: authed(),
     body: JSON.stringify({ blocks: [{ id: "x", type: "nope", order: 0, data: {} }] }),
   });
   assert.equal(bad.status, 400, "unknown block type rejected");
@@ -130,7 +158,7 @@ test("edit chains provenance and revalidates blocks", async () => {
 test("preview renders a DRAFT through the real renderer", async () => {
   const r = await fetch(`${base}/api/preview`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: authed(),
     body: JSON.stringify({
       identityId: "idn_preview",
       handle: "previewonly",
@@ -156,7 +184,7 @@ test("unpublished identities are not publicly rendered", async () => {
 });
 
 test("publish flips status and the profile goes live", async () => {
-  const r = await fetch(`${base}/api/identities/${identityId}/publish`, { method: "POST" });
+  const r = await fetch(`${base}/api/identities/${identityId}/publish`, { method: "POST", headers: authed() });
   assert.equal(r.status, 200);
   const j = (await r.json()) as { manifest: { status: string; publishedAt?: string; identityId: string; handle: string; blocks: unknown[] } };
   assert.equal(j.manifest.status, "published");

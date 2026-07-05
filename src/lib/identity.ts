@@ -146,9 +146,51 @@ export function newBlockId(): string {
   return `blk_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
+// ── Accounts, sessions, RBAC ─────────────────────────────────────────────────
+
+/** Roles, weakest to strongest. Blockchain-simple: shared by address. */
+export const ROLES = ["viewer", "editor", "owner"] as const;
+export type Role = (typeof ROLES)[number];
+
+export function roleRank(role: Role): number {
+  return ROLES.indexOf(role);
+}
+
+/** Access grant — id is `${identityId}:${address}`. caused_by chains
+ *  grants to the granter's own grant: TRACE walks the authority chain. */
+export interface GrantRecord {
+  identityId: string;
+  /** itc1… address of the grantee. */
+  address: string;
+  role: Role;
+  /** Address that granted this (or "operator"). */
+  grantedBy: string;
+  createdAt: string;
+}
+
+/** Login challenge — short-lived, single-use. */
+export interface ChallengeRecord {
+  challengeId: string;
+  address: string;
+  nonce: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/** Session — id is sha256(token); the raw token is never stored. */
+export interface SessionRecord {
+  tokenHash: string;
+  address: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
 /** Collections — the entire storage footprint of NEDB Links. */
 export const COLLECTIONS = {
   identities: "identities",
   handles: "handles",
   events: "events",
+  challenges: "challenges",
+  sessions: "sessions",
+  grants: "grants",
 } as const;

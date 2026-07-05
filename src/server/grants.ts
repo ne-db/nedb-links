@@ -1,0 +1,164 @@
+/**
+ * RBAC, blockchain-simple: access is shared by address.
+ *
+ * A grant is a document (id `${identityId}:${address}`) whose caused_by
+ * chains to the GRANTER's own grant — TRACE walks the authority chain:
+ * who granted whom, caused by whose authority, back to the claim. Access
+ * control with cryptographic provenance.
+ *
+ *   GET    /api/identities/:id/grants            (viewer+)
+ *   POST   /api/identities/:id/grants            (owner)   { address, role }
+ *   DELETE /api/identities/:id/grants/:address   (owner; last owner is immovable)
+ */
+
+import { Router } from "express";
+import { z } from "zod";
+
+import {
+  COLLECTIONS,
+  roleRank,
+  ROLES,
+  type GrantRecord,
+  type Role,
+} from "../lib/identity";
+import { isItcAddress } from "../lib/wallet";
+import { authOf, requireUser, type AuthContext } from "./auth";
+import { causalParent, db } from "./db";
+import { wrap } from "./util";
+
+export const grants = Router({ mergeParams: true });
+
+export function grantId(identityId: string, address: string): string {
+  return `${identityId}:${address}`;
+}
+
+export async function getGrant(
+  identityId: string,
+  address: string,
+): Promise<(GrantRecord & Record<string, unknown>) | null> {
+  const doc = await db.get(COLLECTIONS.grants, grantId(identityId, address));
+  return (doc as (GrantRecord & Record<string, unknown>) | null) ?? null;
+}
+
+export async function grantsFor(identityId: string): Promise<GrantRecord[]> {
+  const rows = await db.query(
+    `FROM ${COLLECTIONS.grants} WHERE identityId = "${identityId}" LIMIT 500`,
+  );
+  return rows as unknown as GrantRecord[];
+}
+
+export async function grantsOf(address: string): Promise<GrantRecord[]> {
+  const rows = await db.query(
+    `FROM ${COLLECTIONS.grants} WHERE address = "${address}" LIMIT 500`,
+  );
+  return rows as unknown as GrantRecord[];
+}
+
+/** Does the caller hold at least `min` on this identity? Operator bypasses. */
+export async function hasRole(
+  identityId: string,
+  auth: AuthContext,
+  min: Role,
+): Promise<boolean> {
+  if (auth.isOperator) return true;
+  const grant = await getGrant(identityId, auth.address);
+  if (!grant) return false;
+  return roleRank(grant.role) >= roleRank(min);
+}
+
+/** Write the initial owner grant at claim time. */
+export async function writeOwnerGrant(
+  identityId: string,
+  address: string,
+  evidence: string,
+): Promise<void> {
+  const record: GrantRecord = {
+    identityId,
+    address,
+    role: "owner",
+    grantedBy: address,
+    createdAt: new Date().toISOString(),
+  };
+  await db.put(
+    COLLECTIONS.grants,
+    grantId(identityId, address),
+    record as unknown as Record<string, unknown>,
+    { evidence },
+  );
+}
+
+// ── Routes (mounted at /api/identities/:id/grants) ──────────────────────────
+
+grants.get("/", requireUser, wrap(async (req, res) => {
+  const identityId = String((req.params as Record<string, string>).id);
+  const auth = authOf(res);
+  if (!auth || !(await hasRole(identityId, auth, "viewer"))) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  res.json({ grants: await grantsFor(identityId) });
+}));
+
+grants.post("/", requireUser, wrap(async (req, res) => {
+  const identityId = String((req.params as Record<string, string>).id);
+  const auth = authOf(res);
+  if (!auth || !(await hasRole(identityId, auth, "owner"))) {
+    res.status(403).json({ error: "owner role required" });
+    return;
+  }
+  const body = z
+    .object({ address: z.string(), role: z.enum(ROLES) })
+    .safeParse(req.body);
+  if (!body.success || !isItcAddress(body.data.address)) {
+    res.status(400).json({ error: "valid itc1 address and role required" });
+    return;
+  }
+
+  // Authority chain: the new grant is CAUSED BY the granter's grant.
+  const granterGrant = auth.isOperator
+    ? null
+    : await getGrant(identityId, auth.address);
+
+  const record: GrantRecord = {
+    identityId,
+    address: body.data.address,
+    role: body.data.role,
+    grantedBy: auth.address,
+    createdAt: new Date().toISOString(),
+  };
+  const put = await db.put(
+    COLLECTIONS.grants,
+    grantId(identityId, body.data.address),
+    record as unknown as Record<string, unknown>,
+    {
+      causedBy: causalParent(granterGrant),
+      evidence: `grant ${body.data.role} by ${auth.address}`,
+    },
+  );
+  res.status(201).json({ grant: record, seq: put.seq, head: put.head });
+}));
+
+grants.delete("/:address", requireUser, wrap(async (req, res) => {
+  const identityId = String((req.params as Record<string, string>).id);
+  const address = String(req.params.address);
+  const auth = authOf(res);
+  if (!auth || !(await hasRole(identityId, auth, "owner"))) {
+    res.status(403).json({ error: "owner role required" });
+    return;
+  }
+
+  const target = await getGrant(identityId, address);
+  if (!target) {
+    res.status(404).json({ error: "no such grant" });
+    return;
+  }
+  if (target.role === "owner") {
+    const owners = (await grantsFor(identityId)).filter((g) => g.role === "owner");
+    if (owners.length <= 1) {
+      res.status(400).json({ error: "cannot remove the last owner" });
+      return;
+    }
+  }
+  await db.delete(COLLECTIONS.grants, grantId(identityId, address));
+  res.json({ ok: true });
+}));

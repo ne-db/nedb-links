@@ -17,7 +17,7 @@ import {
 } from "../lib/identity";
 import { manifestCapabilities } from "../lib/registry";
 import { renderProfileHtml } from "../lib/renderers/html";
-import { requireAdmin } from "./auth";
+import { requireUser } from "./auth";
 import { config } from "./config";
 import { wrap } from "./util";
 
@@ -47,7 +47,7 @@ const previewSchema = z.object({
 });
 
 /** POST /api/preview — draft manifest in, real profile HTML out. */
-preview.post("/", requireAdmin, wrap(async (req, res) => {
+preview.post("/", requireUser, wrap(async (req, res) => {
   const parsed = previewSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "invalid manifest" });
