@@ -23,7 +23,13 @@ type Availability = "idle" | "checking" | "available" | "taken" | "invalid";
  * card, and the JSON surface — each one is a registered renderer over
  * the same Identity Manifest.
  */
-function ShareKit({ handle }: { handle: string }): React.ReactElement {
+function ShareKit({
+  handle,
+  identityId,
+}: {
+  handle: string;
+  identityId: string;
+}): React.ReactElement {
   const [copied, setCopied] = useState(false);
   const origin = window.location.origin;
   const url = `${origin}/${handle}`;
@@ -107,6 +113,13 @@ function ShareKit({ handle }: { handle: string }): React.ReactElement {
           JSON surface
         </a>
       </div>
+
+      <a
+        href={`/edit/${encodeURIComponent(identityId)}`}
+        className="mt-3 block w-full rounded-xl border border-ink-700 text-slate-300 font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+      >
+        ✎ Edit page
+      </a>
 
       <p className="mt-4 text-xs text-slate-500 text-center">
         Every surface above is a renderer over the same Identity Manifest.
@@ -313,18 +326,25 @@ export default function ClaimPage(): React.ReactElement {
             {!published ? (
               <>
                 <p className="text-slate-400 mt-3">
-                  Your identity is drafted from the template. Publish to go live.
+                  Your draft is ready — the template seeded your page. Fill in your
+                  links, then publish to go live.
                 </p>
+                <a
+                  href={`/edit/${encodeURIComponent(claimed.identityId)}`}
+                  className="mt-6 block w-full rounded-xl bg-accent text-ink-950 font-bold py-3.5 text-lg text-center transition hover:brightness-110"
+                >
+                  Edit your draft →
+                </a>
                 <button
                   onClick={publish}
                   disabled={busy}
-                  className="mt-6 w-full rounded-xl bg-accent text-ink-950 font-bold py-3.5 text-lg transition hover:brightness-110 disabled:opacity-40"
+                  className="mt-3 w-full rounded-xl border border-accent/50 text-accent-soft font-bold py-3 transition hover:bg-accent/10 disabled:opacity-40"
                 >
-                  {busy ? "Publishing…" : "Publish now"}
+                  {busy ? "Publishing…" : "Publish as-is"}
                 </button>
               </>
             ) : (
-              <ShareKit handle={claimed.handle} />
+              <ShareKit handle={claimed.handle} identityId={claimed.identityId} />
             )}
           </div>
         )}

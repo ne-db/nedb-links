@@ -111,8 +111,12 @@ test("edit chains provenance and revalidates blocks", async () => {
     body: JSON.stringify({ blocks, bio: "edited by the live API suite" }),
   });
   assert.equal(r.status, 200);
-  const j = (await r.json()) as { manifest: { blocks: unknown[]; bio: string }; seq: number; head: string };
+  const j = (await r.json()) as { manifest: { blocks: unknown[]; bio: string; identityId: string; handle: string }; seq: number; head: string };
   assert.equal(j.manifest.bio, "edited by the live API suite");
+  // The API responds with the server-constructed manifest — never the
+  // engine's put echo (regression: empty claim card on older daemons).
+  assert.equal(j.manifest.identityId, identityId);
+  assert.equal(j.manifest.handle, "smoketest");
   assert.ok(j.head.length >= 32, "Merkle head returned");
 
   const bad = await fetch(`${base}/api/identities/${identityId}`, {
@@ -154,9 +158,12 @@ test("unpublished identities are not publicly rendered", async () => {
 test("publish flips status and the profile goes live", async () => {
   const r = await fetch(`${base}/api/identities/${identityId}/publish`, { method: "POST" });
   assert.equal(r.status, 200);
-  const j = (await r.json()) as { manifest: { status: string; publishedAt?: string } };
+  const j = (await r.json()) as { manifest: { status: string; publishedAt?: string; identityId: string; handle: string; blocks: unknown[] } };
   assert.equal(j.manifest.status, "published");
   assert.ok(j.manifest.publishedAt);
+  assert.equal(j.manifest.identityId, identityId, "publish responds with full server-built manifest");
+  assert.equal(j.manifest.handle, "smoketest");
+  assert.ok(j.manifest.blocks.length >= 4, "blocks present in publish response");
 
   const html = await (await fetch(`${base}/smoketest`)).text();
   assert.ok(html.includes("Smoke Test"), "public profile renders");

@@ -175,7 +175,11 @@ identities.post("/", requireAdmin, wrap(async (req, res) => {
     { evidence: `identity created for handle ${handle}` },
   );
 
-  res.status(201).json({ manifest: put.doc, seq: put.seq, head: put.head });
+  // Respond with the manifest THIS server constructed — never the engine's
+  // put echo, whose shape can vary across nedbd versions. The API response
+  // is our contract. (Found live by Mark: an older daemon's echo lacked
+  // identityId/handle, rendering an empty claim card.)
+  res.status(201).json({ manifest, seq: put.seq, head: put.head });
 }));
 
 /** GET /api/identities — every identity this instance owns, newest first.
@@ -249,7 +253,7 @@ identities.put("/:id", requireAdmin, wrap(async (req, res) => {
       evidence: "manifest edit",
     },
   );
-  res.json({ manifest: put.doc, seq: put.seq, head: put.head });
+  res.json({ manifest: next, seq: put.seq, head: put.head });
 }));
 
 /** POST /api/identities/:id/publish — flip draft to published.
@@ -278,5 +282,5 @@ identities.post("/:id/publish", requireAdmin, wrap(async (req, res) => {
       evidence: `publish: ${current.handle}`,
     },
   );
-  res.json({ manifest: put.doc, seq: put.seq, head: put.head });
+  res.json({ manifest: next, seq: put.seq, head: put.head });
 }));
