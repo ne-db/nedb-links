@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NEDB Links — single dark theme, cyan accent.
+   Variable names match tailwind.config.js (ink / accent scales). */
+:root {
+  --ink-950: 7 10 18;      /* #070a12 canvas */
+  --ink-900: 13 18 30;
+  --ink-850: 17 22 34;
+  --ink-800: 24 31 46;
+  --ink-700: 39 48 66;
+
+  --accent: 34 211 238;      /* #22d3ee */
+  --accent-soft: 103 232 249; /* #67e8f9 */
+  --accent-glow: 6 182 212;   /* #06b6d4 */
+}
+
+html,
+body {
+  @apply bg-ink-950 text-slate-100 antialiased;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.3);
+}
