@@ -120,9 +120,10 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
 export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): string {
   const t: ThemePalette = m.themeCustom ?? THEMES[m.theme ?? "pro"] ?? THEMES.pro;
   const origin = ctx.origin;
+  const brand = esc(ctx.brand ?? "NEDB Links");
   const url = `${origin}/${esc(m.handle)}`;
   const title = `${esc(m.displayName)} (@${esc(m.handle)})`;
-  const desc = esc(m.bio ?? `${m.displayName} on NEDB Links`);
+  const desc = esc(m.bio ?? `${m.displayName} on ${ctx.brand ?? "NEDB Links"}`);
   const avatar = m.avatar
     ? `<img class="av" src="${esc(safeUrl(m.avatar))}" alt="${esc(m.displayName)}" />`
     : `<div class="av avf">${esc(m.displayName.slice(0, 1).toUpperCase())}</div>`;
@@ -198,7 +199,7 @@ ${fonts.link}
 ${blocks}
   </section>
   <footer>
-    <a href="${origin}" rel="noopener"><b>⬡</b> published with NEDB Links</a>
+    <a href="${origin}" rel="noopener"><b>⬡</b> published with ${brand}</a>
   </footer>
 </main>
 </body>

@@ -143,7 +143,7 @@ ${fonts.link}
       <h1>${esc(m.displayName)}</h1>
       <div class="hn">@${esc(m.handle)} · ${esc(origin.replace(/^https?:\/\//, ""))}</div>
       ${org}
-      <div class="brand">⬡ NEDB Links</div>
+      <div class="brand">⬡ ${esc(ctx.brand ?? "NEDB Links")}</div>
     </div>
     <div class="qr">${qrSvg}</div>
   </div>

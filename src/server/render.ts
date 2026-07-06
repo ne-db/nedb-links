@@ -113,7 +113,7 @@ render.get("/:handle", wrap(async (req, res, next) => {
     if (typeof v === "string") options[k] = v;
   }
 
-  const out = await renderer.render(manifest, { origin: originOf(req), options });
+  const out = await renderer.render(manifest, { origin: originOf(req), brand: config.brandName, options });
   res.setHeader("content-type", out.contentType);
   if (out.filename) {
     res.setHeader("content-disposition", `attachment; filename="${out.filename}"`);

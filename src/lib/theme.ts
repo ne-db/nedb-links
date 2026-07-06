@@ -32,13 +32,29 @@ export function nextTheme(t: ThemeName): ThemeName {
   return THEME_ORDER[(i + 1) % THEME_ORDER.length];
 }
 
-export function getTheme(): ThemeName {
+/** The user's explicit pick, or null if they've never chosen. */
+export function getStoredTheme(): ThemeName | null {
   try {
     const t = localStorage.getItem(THEME_KEY);
-    return isThemeName(t) ? t : "pro";
+    return isThemeName(t) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Deployment default injected by the server (prod) — absent in dev. */
+function deploymentDefault(): ThemeName {
+  try {
+    const cfg = (window as unknown as { __LINKS_CONFIG__?: { defaultTheme?: string } })
+      .__LINKS_CONFIG__;
+    return isThemeName(cfg?.defaultTheme) ? cfg.defaultTheme : "pro";
   } catch {
     return "pro";
   }
+}
+
+export function getTheme(): ThemeName {
+  return getStoredTheme() ?? deploymentDefault();
 }
 
 export function applyTheme(theme: ThemeName): void {

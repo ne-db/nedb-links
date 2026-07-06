@@ -95,6 +95,8 @@ export function listTemplates(): TemplateDefinition[] {
 export interface RenderContext {
   /** Absolute origin of this deployment, e.g. https://links.example.com */
   origin: string;
+  /** Deployment wordmark for public surfaces (default "NEDB Links"). */
+  brand?: string;
   /** Extra renderer-specific options (query params, print hints, ...). */
   options?: Record<string, unknown>;
 }

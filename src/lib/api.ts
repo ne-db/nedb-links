@@ -13,6 +13,8 @@ export const EMAIL_KEY = "links-email";
 /** Deployment config — which product this is. Fetched once, cached. */
 export interface AppConfig {
   authMode: "wallet" | "email";
+  brandName: string;
+  defaultTheme: string;
   fiatDoor: boolean;
   limitEnabled: boolean;
 }
@@ -29,7 +31,7 @@ export function getAppConfig(): Promise<AppConfig> {
       appConfigPromise = null;
       // Unreachable server: assume wallet (the default product) so the
       // UI still renders; the gate's own requests will surface errors.
-      return { authMode: "wallet" as const, fiatDoor: false, limitEnabled: false };
+      return { authMode: "wallet" as const, brandName: "NEDB Links", defaultTheme: "pro", fiatDoor: false, limitEnabled: false };
     });
   return appConfigPromise;
 }

@@ -88,5 +88,5 @@ preview.post("/", requireUser, wrap(async (req, res) => {
   const origin =
     config.publicOrigin || `${req.protocol}://${req.get("host") ?? "localhost"}`;
   res.setHeader("content-type", "text/html; charset=utf-8");
-  res.send(renderProfileHtml(manifest, { origin }));
+  res.send(renderProfileHtml(manifest, { origin, brand: config.brandName }));
 }));

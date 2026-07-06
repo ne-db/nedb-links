@@ -17,6 +17,8 @@ process.env.NEDB_DB = `links_email_${Date.now().toString(36)}`;
 process.env.LINKS_AUTH_MODE = "email";
 process.env.LINKS_MAIL_TEST = "1";
 process.env.PUBLIC_ORIGIN = "http://links.test";
+process.env.LINKS_BRAND_NAME = "ne-db";
+process.env.LINKS_DEFAULT_THEME = "v3";
 delete process.env.LINKS_ADMIN_TOKEN;
 
 const { createApp, ensureDatabase } = await import("../src/server/app");
@@ -78,8 +80,14 @@ test("scrypt: hash/verify round trip, wrong password rejected, params recorded",
 });
 
 test("the product split is real: email mode has no wallet endpoints", async () => {
-  const cfg = (await (await fetch(`${base}/api/config`)).json()) as { authMode: string };
+  const cfg = (await (await fetch(`${base}/api/config`)).json()) as {
+    authMode: string;
+    brandName: string;
+    defaultTheme: string;
+  };
   assert.equal(cfg.authMode, "email");
+  assert.equal(cfg.brandName, "ne-db", "the deployment wordmark rides /api/config");
+  assert.equal(cfg.defaultTheme, "v3", "…and so does the default theme");
   const chal = await post("/api/auth/challenge", { address: "itc1qwhatever" });
   assert.equal(chal.status, 404, "wallet challenge does not exist on this product");
 });
@@ -98,7 +106,7 @@ test("signup: validation, verify mail, login gated until confirmed", async () =>
   assert.equal(outbox.length, n + 1, "exactly one mail sent");
   const mail = outbox[n];
   assert.equal(mail.to, EMAIL);
-  assert.match(mail.subject, /Confirm your email/);
+  assert.match(mail.subject, /Confirm your email — ne-db/, "emails wear the deployment brand");
   assert.ok(mail.html.includes("/verify?token="), "html carries the verify link");
   assert.ok(mail.text.includes("/verify?token="), "plain-text twin carries it too");
 
@@ -156,6 +164,10 @@ test("claim + publish ride eml_ principals; 'you're live' mail carries the QR", 
   assert.equal(qr.filename, "marisa-mail-qr.png");
   // PNG magic bytes — it's a real image, not a placeholder.
   assert.deepEqual([...qr.content.subarray(0, 4)], [0x89, 0x50, 0x4e, 0x47]);
+
+  // The public page wears the deployment brand too.
+  const page = await (await fetch(`${base}/marisa-mail`)).text();
+  assert.ok(page.includes("published with ne-db"), "public footer carries the brand");
 });
 
 test("login: verified accounts in, wrong credentials out (same error shape)", async () => {

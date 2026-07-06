@@ -14,16 +14,23 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <!-- Restore persisted theme before first paint to prevent flash -->
+    <!-- Restore persisted theme before first paint. The server injects
+         window.__LINKS_CONFIG__ (brand + default theme) when serving the
+         built shell, so each deployment boots with its own identity. -->
     <script>
       (function () {
         try {
-          var t = localStorage.getItem("links-theme");
+          var cfg = window.__LINKS_CONFIG__ || {};
           var ok = { pro: 1, native: 1, v3: 1, mach: 1 };
+          var t = localStorage.getItem("links-theme");
+          var def = ok[cfg.defaultTheme] ? cfg.defaultTheme : "pro";
           document.documentElement.setAttribute(
             "data-theme",
-            ok[t] ? t : "pro",
+            ok[t] ? t : def,
           );
+          if (cfg.brandName && cfg.brandName !== "NEDB Links") {
+            document.title = document.title.replace("NEDB Links", cfg.brandName);
+          }
         } catch (e) {}
       })();
     </script>

@@ -6,7 +6,7 @@
  * the engine is the system under test as much as the app is.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import cors from "cors";
@@ -70,6 +70,8 @@ export function createApp(): Express {
   app.get("/api/config", (_req, res) => {
     res.json({
       authMode: config.authMode,
+      brandName: config.brandName,
+      defaultTheme: config.defaultTheme,
       fiatDoor: Boolean(config.stripeSecretKey),
       limitEnabled: config.limitEnabled,
     });
@@ -89,7 +91,25 @@ export function createApp(): Express {
   // ── Editor SPA (production build) ─────────────────────────────────────────
   const dist = resolve(process.cwd(), "dist");
   const hasDist = existsSync(join(dist, "index.html"));
+  // Runtime brand injection: ONE build serves every deployment, so the
+  // shell learns its identity when served, not when built. The injected
+  // blob feeds the pre-paint theme script and the document title.
+  const shellHtml = hasDist
+    ? readFileSync(join(dist, "index.html"), "utf8").replace(
+        "<head>",
+        `<head><script>window.__LINKS_CONFIG__=${JSON.stringify({
+          brandName: config.brandName,
+          defaultTheme: config.defaultTheme,
+          authMode: config.authMode,
+        })}</script>`,
+      )
+    : null;
+  const sendShell = (res: Response): void => {
+    res.setHeader("content-type", "text/html; charset=utf-8");
+    res.send(shellHtml);
+  };
   if (hasDist) {
+    app.get(["/", "/index.html"], (_req, res) => sendShell(res));
     app.use(express.static(dist, { index: false }));
   }
 
@@ -103,7 +123,7 @@ export function createApp(): Express {
       return;
     }
     if (hasDist) {
-      res.sendFile(join(dist, "index.html"));
+      sendShell(res);
       return;
     }
     res

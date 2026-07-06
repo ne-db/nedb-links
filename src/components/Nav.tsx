@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
 
 import { clearSession, getAddress, getEmail, getToken } from "../lib/api";
-import { getTheme, nextTheme, THEME_LABELS, toggleTheme, type ThemeName } from "../lib/theme";
+import { useAppConfig } from "../lib/useAppConfig";
+import { applyTheme, getStoredTheme, getTheme, isThemeName, nextTheme, THEME_LABELS, toggleTheme, type ThemeName } from "../lib/theme";
 
 /** itc1qxy2k…x0wlh — inline (keeps wallet crypto out of the nav bundle). */
 function shortAddr(addr: string): string {
@@ -28,6 +29,8 @@ export function Nav({
   context?: React.ReactNode;
   actions?: React.ReactNode;
 } = {}): React.ReactElement {
+  const cfg = useAppConfig();
+  const brand = cfg?.brandName ?? "NEDB Links";
   const [address, setAddress] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeName>("pro");
@@ -38,13 +41,31 @@ export function Nav({
     setTheme(getTheme());
   }, []);
 
+  // Dev parity: prod injects the deployment default pre-paint; in dev
+  // (no injection) apply it once the config lands — but never override
+  // a theme the user explicitly picked.
+  useEffect(() => {
+    if (!cfg) return;
+    if (getStoredTheme()) return;
+    if (isThemeName(cfg.defaultTheme) && cfg.defaultTheme !== getTheme()) {
+      applyTheme(cfg.defaultTheme);
+      setTheme(cfg.defaultTheme);
+      try {
+        localStorage.removeItem("links-theme"); // applyTheme stored it; a default is not a choice
+      } catch { /* fine */ }
+    }
+    if (cfg.brandName && cfg.brandName !== "NEDB Links" && document.title.includes("NEDB Links")) {
+      document.title = document.title.replace("NEDB Links", cfg.brandName);
+    }
+  }, [cfg]);
+
   return (
     <nav className="streamline w-full border-b border-ink-800 bg-ink-900/85 backdrop-blur sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-5 h-12 flex items-center gap-3 justify-between">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <Link href="/" className="font-display font-bold text-lg tracking-tight text-fg shrink-0" title="NEDB Links">
+          <Link href="/" className="font-display font-bold text-lg tracking-tight text-fg shrink-0" title={brand}>
             <span className="text-accent">⬡</span>
-            <span className={context ? "hidden lg:inline" : ""}> NEDB Links</span>
+            <span className={context ? "hidden lg:inline" : ""}> {brand}</span>
           </Link>
           {!context && (
             <Link

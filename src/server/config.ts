@@ -16,6 +16,10 @@ export interface LinksConfig {
   port: number;
   /** Which account system this deployment runs. */
   authMode: AuthMode;
+  /** Deployment wordmark — nav, page title, emails, public footers. */
+  brandName: string;
+  /** App theme for first-time visitors (until they pick their own). */
+  defaultTheme: string;
 
   // ── Mail (required in email mode; Mail-in-a-Box friendly) ───────────────
   smtpHost?: string;
@@ -67,6 +71,10 @@ export function loadConfig(): LinksConfig {
     // tools (vite, PaaS runtimes) and port collisions/skew follow.
     port: Number(process.env.LINKS_API_PORT || process.env.PORT || 3001),
     authMode,
+    brandName: (process.env.LINKS_BRAND_NAME || "NEDB Links").slice(0, 40),
+    defaultTheme: ["pro", "native", "v3", "mach"].includes(process.env.LINKS_DEFAULT_THEME || "")
+      ? (process.env.LINKS_DEFAULT_THEME as string)
+      : "pro",
     smtpHost: process.env.SMTP_HOST || undefined,
     smtpPort: Number(process.env.SMTP_PORT || 587),
     smtpSecure: process.env.SMTP_SECURE === "1" || process.env.SMTP_SECURE === "true",

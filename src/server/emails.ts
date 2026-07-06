@@ -12,7 +12,11 @@
  * Every template returns a complete OutgoingMail ready for sendMail().
  */
 
+import { config } from "./config";
 import type { OutgoingMail } from "./mailer";
+
+const BRAND = config.brandName;
+const BRAND_UP = BRAND.toUpperCase();
 
 // ── Shared shell ─────────────────────────────────────────────────────────────
 
@@ -81,14 +85,14 @@ function shell(opts: {
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="color-scheme" content="light"/>
 <meta name="supported-color-schemes" content="light"/>
-<title>NEDB Links</title>
+<title>${esc(BRAND)}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F7F8FA;">
   <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;">${esc(opts.preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F8FA;">
     <tr><td align="center" style="padding:40px 16px 12px;">
       <p style="margin:0 0 22px;font-family:${FONT};font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${FAINT};">
-        <span style="color:${BLUE};">&#x2B21;</span>&nbsp; NEDB LINKS
+        <span style="color:${BLUE};">&#x2B21;</span>&nbsp; ${esc(BRAND_UP)}
       </p>
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#ffffff;border:1px solid ${BORDER};border-radius:18px;">
         <tr><td style="padding:40px 40px 34px;">
@@ -98,7 +102,7 @@ function shell(opts: {
       </table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:12px;line-height:1.6;color:${FAINT};max-width:560px;">
         ${opts.reason}<br/>
-        NEDB Links — one handle, every surface. Self-hostable, GPLv3.
+        ${esc(BRAND)} — one handle, every surface. Self-hostable, GPLv3.
       </p>
     </td></tr>
   </table>
@@ -126,14 +130,14 @@ export function verifyEmail(opts: { to: string; verifyUrl: string }): OutgoingMa
         { center: true, muted: true },
       ),
     ].join("\n"),
-    reason: `You're receiving this because this address was used to sign up at NEDB Links.`,
+    reason: `You're receiving this because this address was used to sign up at ${esc(BRAND)}.`,
   });
   return {
     to: opts.to,
-    subject: "Confirm your email — NEDB Links",
+    subject: `Confirm your email — ${BRAND}`,
     html,
     text: [
-      "NEDB LINKS — CONFIRM YOUR EMAIL",
+      `${BRAND_UP} — CONFIRM YOUR EMAIL`,
       "",
       "You're one click away. Confirm this address and your account is live.",
       "",
@@ -172,14 +176,14 @@ export function welcomeEmail(opts: { to: string; claimUrl: string }): OutgoingMa
           <span style="color:${BLUE};font-weight:700;">3.</span>&nbsp; Print the QR anywhere — if you ever rename, old codes still work.</td></tr>
       </table>`,
     ].join("\n"),
-    reason: "You're receiving this one-time welcome because you just verified your NEDB Links account.",
+    reason: `You're receiving this one-time welcome because you just verified your ${esc(BRAND)} account.`,
   });
   return {
     to: opts.to,
     subject: "You're in — claim your handle",
     html,
     text: [
-      "NEDB LINKS — WELCOME",
+      `${BRAND_UP} — WELCOME`,
       "",
       "You're in. One handle gets you every surface: profile page, business card,",
       "scan-tracked QR, and a save-to-contacts vCard — all from one editor.",
@@ -198,7 +202,7 @@ export function welcomeEmail(opts: { to: string; claimUrl: string }): OutgoingMa
 
 export function resetEmail(opts: { to: string; resetUrl: string }): OutgoingMail {
   const html = shell({
-    preheader: "Reset your NEDB Links password. Link expires in 30 minutes.",
+    preheader: `Reset your ${BRAND} password. Link expires in 30 minutes.`,
     kicker: "password reset",
     content: [
       heading("Reset your password"),
@@ -214,14 +218,14 @@ export function resetEmail(opts: { to: string; resetUrl: string }): OutgoingMail
         { center: true, muted: true },
       ),
     ].join("\n"),
-    reason: "You're receiving this because a password reset was requested for this address at NEDB Links.",
+    reason: `You're receiving this because a password reset was requested for this address at ${esc(BRAND)}.`,
   });
   return {
     to: opts.to,
-    subject: "Reset your password — NEDB Links",
+    subject: `Reset your password — ${BRAND}`,
     html,
     text: [
-      "NEDB LINKS — PASSWORD RESET",
+      `${BRAND_UP} — PASSWORD RESET`,
       "",
       "Someone (hopefully you) asked to reset the password for this account.",
       "",
@@ -271,14 +275,14 @@ export function publishedEmail(opts: {
         <a href="${u}?format=qr&amp;download=1" style="color:${BLUE};text-decoration:none;font-weight:600;">QR (SVG)</a>
       </p>`,
     ].join("\n"),
-    reason: `You're receiving this because you published @${esc(opts.handle)} on NEDB Links.`,
+    reason: `You're receiving this because you published @${esc(opts.handle)} on ${esc(BRAND)}.`,
   });
   return {
     to: opts.to,
     subject: `@${opts.handle} is live — page, card, and QR`,
     html,
     text: [
-      `NEDB LINKS — @${opts.handle} IS LIVE`,
+      `${BRAND_UP} — @${opts.handle} IS LIVE`,
       "",
       `Your page: ${opts.profileUrl}`,
       "",
@@ -332,14 +336,14 @@ export function receiptEmail(opts: {
         { center: true, muted: true },
       ),
     ].join("\n"),
-    reason: "You're receiving this because you made a one-time contribution on NEDB Links.",
+    reason: `You're receiving this because you made a one-time contribution on ${esc(BRAND)}.`,
   });
   return {
     to: opts.to,
     subject: `Receipt — unlimited profiles, forever (${amount})`,
     html,
     text: [
-      "NEDB LINKS — RECEIPT",
+      `${BRAND_UP} — RECEIPT`,
       "",
       "Unlimited, forever. Thank you.",
       "",
