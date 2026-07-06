@@ -10,6 +10,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  GripVertical,
   Heading2,
   ImagePlus,
   Link2,
@@ -31,6 +32,7 @@ import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
 import type { BackgroundConfig } from "../../src/lib/background";
+import { dragTarget, moveItem, siblingShift } from "../../src/lib/dragReorder";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
 import { LogoStudio } from "../../src/components/LogoStudio";
@@ -370,10 +372,139 @@ export default function EditPage(): React.ReactElement {
       const next = [...manifest.blocks].sort((a, b) => a.order - b.order);
       const target = index + delta;
       if (target < 0 || target >= next.length) return;
-      [next[index], next[target]] = [next[target], next[index]];
-      setBlocks(next);
+      setBlocks(moveItem(next, index, target));
     },
     [manifest, setBlocks],
+  );
+
+  // ── Drag-to-reorder — pointer events, so mouse AND touch both work ─────────
+  // (HTML5 drag-and-drop never fires on touch; pointer capture does.)
+  // The grip owns the gesture: touch-action none is scoped to it, so the
+  // page keeps scrolling everywhere else. Order commits on release; while
+  // live, siblings make way visually via pure siblingShift math.
+  const [drag, setDrag] = useState<{ from: number; to: number; dy: number } | null>(null);
+  const blockListRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    from: number;
+    startYDoc: number;
+    lastClientY: number;
+    tops: number[];
+    heights: number[];
+    pitch: number;
+    pointerId: number;
+  } | null>(null);
+  const dragRaf = useRef(false);
+  const edgeRaf = useRef<number | null>(null);
+
+  const scheduleDragUpdate = useCallback(() => {
+    if (dragRaf.current) return;
+    dragRaf.current = true;
+    requestAnimationFrame(() => {
+      dragRaf.current = false;
+      const d = dragRef.current;
+      if (!d) return;
+      const dy = d.lastClientY + window.scrollY - d.startYDoc;
+      setDrag({ from: d.from, to: dragTarget(d.from, dy, d.tops, d.heights), dy });
+    });
+  }, []);
+
+  /** Long lists on phones: dragging near the viewport edge scrolls the
+   *  page (touch produces no pointermove while held still, so this runs
+   *  its own rAF loop until the pointer leaves the edge zone). */
+  const maybeEdgeScroll = useCallback(() => {
+    const EDGE = 64;
+    const SPEED = 14;
+    const step = () => {
+      const d = dragRef.current;
+      if (!d) {
+        edgeRaf.current = null;
+        return;
+      }
+      const y = d.lastClientY;
+      let delta = 0;
+      if (y < EDGE) delta = -SPEED * (1 - y / EDGE);
+      else if (y > window.innerHeight - EDGE) delta = SPEED * (1 - (window.innerHeight - y) / EDGE);
+      if (delta !== 0) {
+        window.scrollBy(0, delta);
+        scheduleDragUpdate();
+        edgeRaf.current = requestAnimationFrame(step);
+      } else {
+        edgeRaf.current = null;
+      }
+    };
+    if (edgeRaf.current === null) edgeRaf.current = requestAnimationFrame(step);
+  }, [scheduleDragUpdate]);
+
+  const beginDrag = useCallback((e: React.PointerEvent<HTMLButtonElement>, index: number) => {
+    if (dragRef.current || !blockListRef.current) return;
+    const cards = Array.from(blockListRef.current.querySelectorAll<HTMLElement>("[data-bi]"));
+    if (cards.length < 2) return;
+    const scrollY = window.scrollY;
+    const rects = cards.map((c) => c.getBoundingClientRect());
+    const tops = rects.map((r) => r.top + scrollY);
+    const heights = rects.map((r) => r.height);
+    const gap = tops.length > 1 ? Math.max(0, tops[1] - (tops[0] + heights[0])) : 12;
+    dragRef.current = {
+      from: index,
+      startYDoc: e.clientY + scrollY,
+      lastClientY: e.clientY,
+      tops,
+      heights,
+      pitch: heights[index] + gap,
+      pointerId: e.pointerId,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({ from: index, to: index, dy: 0 });
+  }, []);
+
+  const onDragMove = useCallback(
+    (e: React.PointerEvent) => {
+      const d = dragRef.current;
+      if (!d || e.pointerId !== d.pointerId) return;
+      d.lastClientY = e.clientY;
+      scheduleDragUpdate();
+      maybeEdgeScroll();
+    },
+    [scheduleDragUpdate, maybeEdgeScroll],
+  );
+
+  const stopDrag = useCallback(() => {
+    dragRef.current = null;
+    if (edgeRaf.current !== null) {
+      cancelAnimationFrame(edgeRaf.current);
+      edgeRaf.current = null;
+    }
+    setDrag(null);
+  }, []);
+
+  const onDragEnd = useCallback(
+    (e: React.PointerEvent) => {
+      const d = dragRef.current;
+      if (!d || e.pointerId !== d.pointerId) return;
+      // Final target from the release point itself — never a frame stale.
+      const dy = e.clientY + window.scrollY - d.startYDoc;
+      const to = dragTarget(d.from, dy, d.tops, d.heights);
+      const from = d.from;
+      stopDrag();
+      if (to !== from && manifest) {
+        setBlocks(moveItem([...manifest.blocks].sort((a, b) => a.order - b.order), from, to));
+      }
+    },
+    [manifest, setBlocks, stopDrag],
+  );
+
+  /** Inline styles while a drag is live: the lifted card rides the
+   *  pointer; cards in the from→to window make way. */
+  const dragStyle = useCallback(
+    (i: number): React.CSSProperties | undefined => {
+      if (!drag) return undefined;
+      if (i === drag.from) {
+        return { transform: `translateY(${drag.dy}px) scale(1.012)`, zIndex: 30, position: "relative" };
+      }
+      const shift = siblingShift(i, drag.from, drag.to, dragRef.current?.pitch ?? 0);
+      return { transform: shift ? `translateY(${shift}px)` : undefined, transition: "transform 160ms ease" };
+    },
+    [drag],
   );
 
   const save = useCallback(async (): Promise<boolean> => {
@@ -610,13 +741,32 @@ export default function EditPage(): React.ReactElement {
                 <h2 className="section-title">Blocks</h2>
                 <p className="section-desc">Links, headers, embeds — the body of your page, in order.</p>
               </div>
-              <div className="grid gap-3">
+              <div ref={blockListRef} className={`grid gap-3 ${drag ? "select-none" : ""}`}>
                 {ordered.map((b, i) => {
                   const def = blockDefs.find((x) => x.type === b.type);
                   const Icon = BLOCK_ICONS[b.type] ?? Link2;
                   return (
-                    <div key={b.id} className="panel p-4 sm:p-5">
+                    <div
+                      key={b.id}
+                      data-bi={i}
+                      className={`panel p-4 sm:p-5 ${drag?.from === i ? "drag-lift" : ""}`}
+                      style={dragStyle(i)}
+                    >
                       <div className="flex items-center gap-3 mb-4">
+                        {ordered.length > 1 && (
+                          <button
+                            onPointerDown={(e) => beginDrag(e, i)}
+                            onPointerMove={onDragMove}
+                            onPointerUp={onDragEnd}
+                            onPointerCancel={stopDrag}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="drag-grip icon-btn shrink-0 -ml-1.5 -mr-1"
+                            title="Drag to reorder — the arrows still work too"
+                            aria-label="Drag to reorder"
+                          >
+                            <GripVertical size={15} />
+                          </button>
+                        )}
                         <span className="w-8 h-8 rounded-[10px] bg-accent/10 text-accent-soft inline-flex items-center justify-center shrink-0">
                           <Icon size={16} />
                         </span>

@@ -442,6 +442,26 @@ html.theme-fade *::after {
     background-color: rgb(220 38 38 / 0.08);
   }
 
+  /* Drag-to-reorder — the grip owns the gesture. touch-action: none is
+     scoped HERE (not the list), so the page still scrolls from anywhere
+     else on a phone; only a finger ON the grip starts a drag. */
+  .drag-grip {
+    touch-action: none;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .drag-grip:active {
+    cursor: grabbing;
+    color: rgb(var(--accent-soft));
+  }
+  /* The lifted card — riding the pointer above its siblings. */
+  .drag-lift {
+    box-shadow: 0 4px 10px rgb(0 0 0 / 0.1), 0 22px 44px -12px rgb(0 0 0 / 0.4);
+    border-color: rgb(var(--accent) / 0.45);
+  }
+
   /* Status chip */
   .chip {
     display: inline-flex;
