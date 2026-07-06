@@ -305,3 +305,40 @@ test("socialGlyph: name match, aliases, hostname detection, honest fallbacks", a
   // Empty everything → globe.
   assert.ok(socialGlyph("", "https://somewhere.example").inner.includes("<path"), "bare url → globe");
 });
+
+test("gradient tier: gradients render, solid anchors guard color-only positions", async () => {
+  const m = fixture({ theme: "aurora" });
+  const html = renderProfileHtml(m, CTX);
+  assert.ok(html.includes("linear-gradient(165deg,#0b1026"), "gradient background renders");
+  assert.ok(html.includes("border: 3px solid #141a3a"), "avatar ring uses the solid anchor, not the gradient");
+
+  const card = await renderCardHtml(m, CTX);
+  assert.equal(
+    /linear-gradient\([^)]*linear-gradient/.test(card),
+    false,
+    "no gradient nested inside a gradient — the card uses the anchor",
+  );
+  assert.ok(card.includes("#141a3a"), "card composes with the solid anchor");
+
+  // Solid themes are untouched: solidBg falls back to bg.
+  const solid = renderProfileHtml(fixture({ theme: "mach" }), CTX);
+  assert.ok(solid.includes("border: 3px solid #0b0d11"), "solid themes anchor on their own bg");
+});
+
+test("gradient tier: gradients render, solid anchors guard color-only positions", async () => {
+  const m = fixture({ theme: "aurora" });
+  const html = renderProfileHtml(m, CTX);
+  assert.ok(html.includes("linear-gradient(165deg,#0b1026"), "gradient background renders");
+  assert.ok(html.includes("border: 3px solid #141a3a"), "avatar ring uses the solid anchor");
+
+  const card = await renderCardHtml(m, CTX);
+  assert.equal(
+    /linear-gradient\([^)]*linear-gradient/.test(card),
+    false,
+    "no gradient nested inside a gradient",
+  );
+  assert.ok(card.includes("#141a3a"), "card composes with the solid anchor");
+
+  const solid = renderProfileHtml(fixture({ theme: "mach" }), CTX);
+  assert.ok(solid.includes("border: 3px solid #0b0d11"), "solid themes anchor on their own bg");
+});
