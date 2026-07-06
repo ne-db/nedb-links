@@ -17,7 +17,7 @@
 
 import type { IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
-import { esc, fontAssets, THEMES } from "./html";
+import { esc, fontAssets, solidBg, THEMES } from "./html";
 import { buildQrSvg, shareUrl } from "./qr";
 
 export async function renderCardHtml(
@@ -73,7 +73,7 @@ ${fonts.link}
     width: min(92vw, 520px);
     aspect-ratio: 1.75;                /* 3.5 × 2 — true card proportions */
     border-radius: 18px;
-    background: linear-gradient(135deg, ${t.card.slice(0, 7)}, ${t.bg});
+    background: linear-gradient(135deg, ${t.card.slice(0, 7)}, ${solidBg(t)});
     border: 1px solid ${t.accent}33;
     box-shadow: 0 0 0 1px ${t.accent}1a, 0 24px 80px -24px ${t.accent}40;
     display: grid;
@@ -94,7 +94,7 @@ ${fonts.link}
         border-radius: 50%; object-fit: cover; border: 2px solid ${t.accent}66; }
   .avf { display: flex; align-items: center; justify-content: center;
          font-weight: 800; font-size: clamp(18px, 4vw, 24px);
-         color: ${t.accent}; background: ${t.bg}; }
+         color: ${t.accent}; background: ${solidBg(t)}; }
   h1 { font-family: ${fonts.headingCss}; font-size: clamp(18px, 4.6vw, 26px); font-weight: 800;
        letter-spacing: -0.02em; margin-top: 10px;
        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -118,7 +118,7 @@ ${fonts.link}
     transition: transform 0.12s ease, filter 0.12s ease;
   }
   .actions a:hover { transform: translateY(-1px); filter: brightness(1.1); }
-  .primary { background: ${t.accent}; color: ${t.bg}; }
+  .primary { background: ${t.accent}; color: ${solidBg(t)}; }
   .ghost { border: 1px solid ${t.accent}55; color: ${t.accent}; }
   .hint { color: ${t.sub}; font-size: 12px; }
 

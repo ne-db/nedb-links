@@ -11,11 +11,20 @@ import { defineRenderer, type RenderContext } from "../registry";
 import { socialGlyph } from "./social-icons";
 
 export interface ThemePalette {
+  /** Page background — a color OR a CSS gradient string. */
   bg: string;
   card: string;
   text: string;
   sub: string;
   accent: string;
+  /** Solid anchor for color-only positions (borders, text color) when
+   *  bg is a gradient. Renderers use solidBg(t), never t.bg, there. */
+  base?: string;
+}
+
+/** The solid stand-in for gradient backgrounds. */
+export function solidBg(t: ThemePalette): string {
+  return t.base ?? t.bg;
 }
 
 export const THEMES: Record<string, ThemePalette> = {
@@ -31,6 +40,19 @@ export const THEMES: Record<string, ThemePalette> = {
   daylight: { bg: "#f8fafc", card: "#ffffffcc", text: "#0f172a", sub: "#475569", accent: "#0284c7" },
   mono:     { bg: "#0a0a0a", card: "#16161699", text: "#fafafa", sub: "#a3a3a3", accent: "#e5e5e5" },
   slate:    { bg: "#0b1017", card: "#151d2999", text: "#f1f5f9", sub: "#94a3b8", accent: "#38bdf8" },
+  // ── The gradient tier — flagship strength, still one HTML file, zero JS ──
+  aurora:   { bg: "linear-gradient(165deg,#0b1026 0%,#1e1b4b 45%,#172554 100%)", base: "#141a3a",
+              card: "#1e1b4b99", text: "#eef2ff", sub: "#a5b4fc", accent: "#818cf8" },
+  sunset:   { bg: "linear-gradient(160deg,#2a1445 0%,#7c2d5c 55%,#b4530a 100%)", base: "#3b1d4f",
+              card: "#3b1d4f99", text: "#fff7ed", sub: "#fdba74", accent: "#fb923c" },
+  ocean:    { bg: "linear-gradient(170deg,#031c26 0%,#0c4a6e 60%,#043c50 100%)", base: "#062a38",
+              card: "#0c4a6e80", text: "#ecfeff", sub: "#67e8f9", accent: "#22d3ee" },
+  noir:     { bg: "radial-gradient(130% 130% at 50% 0%,#26262b 0%,#0a0a0c 60%)", base: "#111114",
+              card: "#1c1c2166", text: "#fafafa", sub: "#a1a1aa", accent: "#e4e4e7" },
+  blossom:  { bg: "linear-gradient(160deg,#fdf2f8 0%,#ede9fe 60%,#fce7f3 100%)", base: "#fdf2f8",
+              card: "#ffffffd9", text: "#500724", sub: "#9d174d", accent: "#db2777" },
+  citrus:   { bg: "linear-gradient(160deg,#f7fee7 0%,#ecfccb 45%,#d9f99d 100%)", base: "#f7fee7",
+              card: "#ffffffcc", text: "#1a2e05", sub: "#4d7c0f", accent: "#65a30d" },
 };
 
 export function esc(s: unknown): string {
@@ -203,7 +225,7 @@ ${fonts.link}
          background: linear-gradient(140deg, ${t.accent}, ${t.accent}22 70%);
          box-shadow: 0 10px 34px -10px ${t.accent}66; }
   .av { display: block; width: 96px; height: 96px; border-radius: 50%;
-        object-fit: cover; border: 3px solid ${t.bg}; }
+        object-fit: cover; border: 3px solid ${solidBg(t)}; }
   .avf { display: flex; align-items: center; justify-content: center;
          font-size: 40px; font-weight: 800; color: ${t.accent};
          background: ${t.card}; }
