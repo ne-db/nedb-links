@@ -358,3 +358,22 @@ test("background override: canvas + page ink swap, cards stay theme-driven", () 
   const plain = renderProfileHtml(fixture({ theme: "signal" }), CTX);
   assert.ok(plain.includes("background: #0f172a; color: #f8fafc"), "absent background leaves the theme canvas untouched");
 });
+
+test("soc: icon tokens: brand SVG in the chip, raw tokens never leak", () => {
+  const m = fixture({
+    blocks: [
+      { id: "blk_ig", type: "link", order: 0, data: { label: "My reels", url: "https://instagram.com/marisa", icon: "soc:instagram" } },
+      { id: "blk_tw", type: "link", order: 1, data: { label: "Posts", url: "https://x.com/marisa", icon: "soc:twitter" } },
+      { id: "blk_uk", type: "link", order: 2, data: { label: "Mystery", url: "https://weird.example", icon: "soc:notabrand" } },
+      { id: "blk_em", type: "link", order: 3, data: { label: "Menu", url: "https://menu.example", icon: "✂" } },
+    ],
+  });
+  const html = renderProfileHtml(m, CTX);
+
+  assert.ok(/<span class="ic"><svg viewBox="0 0 24 24"[^>]*><path d="M12 2\.2/.test(html), "soc:instagram → inline instagram SVG in the icon chip");
+  assert.ok(html.includes('d="M18.9 2H22'), "soc:twitter resolves through the alias to the X glyph");
+  assert.equal(html.includes("soc:notabrand"), false, "unknown tokens NEVER print on the public page");
+  assert.ok(html.includes('class="lk noic"'), "the unknown-token card renders iconless, honestly");
+  assert.ok(html.includes('<span class="ic">✂</span>'), "text glyphs unchanged");
+  assert.ok(html.includes(".ic svg"), "chip svg sizing ships with the page css");
+});

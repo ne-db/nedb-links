@@ -33,6 +33,7 @@ import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
 import type { BackgroundConfig } from "../../src/lib/background";
 import { dragTarget, moveItem, siblingShift } from "../../src/lib/dragReorder";
+import { BRAND_IDS, SOC_PREFIX, brandGlyph } from "../../src/lib/renderers/social-icons";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
 import { LogoStudio } from "../../src/components/LogoStudio";
@@ -113,6 +114,24 @@ const ICON_SET = [
   "👑", "🌸", "🌿", "💎", "🚀", "🏠", "🗓️", "🎓",
 ];
 
+/** Renders an icon VALUE: a `soc:<brand>` token becomes its inline
+ *  brand SVG (exactly what the public renderer does); anything else is
+ *  the text glyph itself. */
+function IconGlyph({ token, className }: { token: string; className?: string }): React.ReactElement {
+  if (token.startsWith(SOC_PREFIX)) {
+    const path = brandGlyph(token.slice(SOC_PREFIX.length));
+    if (path) {
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={className ?? "w-[18px] h-[18px] fill-current inline-block align-[-3px]"}>
+          <path d={path} />
+        </svg>
+      );
+    }
+    return <span className="text-fg-subtle">?</span>;
+  }
+  return <>{token}</>;
+}
+
 function IconPicker({
   value,
   onPick,
@@ -128,7 +147,7 @@ function IconPicker({
         className="field !w-full text-center text-base leading-none !py-2"
         title={value ? `Icon: ${value} — tap to change` : "Pick an icon"}
       >
-        {value || <span className="text-fg-faint text-sm">＋</span>}
+        {value ? <IconGlyph token={value} /> : <span className="text-fg-faint text-sm">＋</span>}
       </button>
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-72 panel p-3 shadow-card-hover">
@@ -144,6 +163,33 @@ function IconPicker({
               none
             </button>
           </div>
+
+          {/* Brands — the same SVGs the public page renders, stored as
+              soc:<id> tokens the renderer understands. */}
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle mb-1">Brands</p>
+          <div className="grid grid-cols-8 gap-1 mb-2">
+            {BRAND_IDS.map((id) => {
+              const token = `${SOC_PREFIX}${id}`;
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    onPick(token);
+                    setOpen(false);
+                  }}
+                  className={`h-8 rounded-lg inline-flex items-center justify-center text-fg-muted hover:text-accent-soft transition hover:bg-ink-850 ${
+                    value === token ? "ring-2 ring-accent bg-accent/10 text-accent-soft" : ""
+                  }`}
+                  title={id}
+                  aria-label={id}
+                >
+                  <IconGlyph token={token} className="w-4 h-4 fill-current" />
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle mb-1">Glyphs</p>
           <div className="grid grid-cols-8 gap-1">
             {ICON_SET.map((g) => (
               <button
@@ -162,7 +208,7 @@ function IconPicker({
             ))}
           </div>
           <input
-            value={value}
+            value={value.startsWith(SOC_PREFIX) ? "" : value}
             onChange={(e) => onPick(e.target.value.slice(0, 4))}
             placeholder="or type your own"
             className="field mt-2 !py-1.5 text-center text-sm"

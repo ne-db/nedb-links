@@ -67,6 +67,25 @@ const HOSTS: Array<[RegExp, string]> = [
   [/wa\.me|whatsapp\.com/i, "whatsapp"],
 ];
 
+/**
+ * The icon-token contract: a link block whose icon is `soc:<brand>`
+ * renders that brand's SVG everywhere the icon travels (the zero-JS
+ * public page today; any future surface for free). The picker offers
+ * exactly BRAND_IDS; the renderer resolves through brandGlyph — one
+ * source of truth, the P record above.
+ */
+export const SOC_PREFIX = "soc:";
+
+export const BRAND_IDS: string[] = Object.keys(P);
+
+/** Resolve a brand id (or alias) to its 24×24 path — null if unknown,
+ *  because a wrong brand mark is worse than no brand mark. */
+export function brandGlyph(id: string): string | null {
+  const key = id.trim().toLowerCase();
+  const resolved = P[key] ? key : ALIASES[key];
+  return resolved && P[resolved] ? P[resolved] : null;
+}
+
 export interface SocialGlyph {
   /** Inner SVG markup (path or text glyph) for a 24×24 viewBox. */
   inner: string;

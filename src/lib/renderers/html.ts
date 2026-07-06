@@ -9,7 +9,7 @@
 import { anchorOf, bgCss, pageInkOn, type BackgroundConfig } from "../background";
 import { FONTS, isFilledUrl, type Block, type IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
-import { socialGlyph } from "./social-icons";
+import { SOC_PREFIX, brandGlyph, socialGlyph } from "./social-icons";
 
 export interface ThemePalette {
   /** Page background — a color OR a CSS gradient string. */
@@ -118,6 +118,19 @@ function go(origin: string, m: IdentityManifest, blockId: string, url: string): 
   return `${origin}/go/${encodeURIComponent(m.identityId)}/${encodeURIComponent(blockId)}?to=${encodeURIComponent(url)}`;
 }
 
+/** A block icon is either a text glyph (escaped) or a `soc:<brand>`
+ *  token → inline brand SVG. Unknown tokens render NOTHING — the raw
+ *  token string never leaks onto a public page. */
+function iconMarkup(icon: unknown): string {
+  const s = String(icon ?? "");
+  if (!s) return "";
+  if (s.startsWith(SOC_PREFIX)) {
+    const path = brandGlyph(s.slice(SOC_PREFIX.length));
+    return path ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>` : "";
+  }
+  return esc(s);
+}
+
 function embedFrame(url: string): string | null {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
   if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`;
@@ -138,8 +151,9 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
       // template link doesn't exist as far as the public page knows.
       if (!isFilledUrl(d.url)) return "";
       const url = safeUrl(d.url);
-      const icon = d.icon ? `<span class="ic">${esc(d.icon)}</span>` : "";
-      return `<a class="lk${d.icon ? "" : " noic"}" href="${esc(go(origin, m, b.id, url))}" rel="noopener">${icon}<span>${esc(d.label)}</span><span class="ar">›</span></a>`;
+      const iconHtml = iconMarkup(d.icon);
+      const icon = iconHtml ? `<span class="ic">${iconHtml}</span>` : "";
+      return `<a class="lk${iconHtml ? "" : " noic"}" href="${esc(go(origin, m, b.id, url))}" rel="noopener">${icon}<span>${esc(d.label)}</span><span class="ar">›</span></a>`;
     }
     case "social":
       // Social profiles are identity, not content — they render as the
@@ -281,6 +295,7 @@ ${fonts.link}
   .ic { display: inline-flex; align-items: center; justify-content: center;
         width: 36px; height: 36px; border-radius: 11px; flex: none;
         color: ${t.accent}; background: ${t.accent}14; font-size: 17px; }
+  .ic svg { width: 19px; height: 19px; fill: currentColor; }
   .lk > span:not(.ic):not(.ar) { flex: 1; text-align: left; }
   .lk.noic > span:not(.ar) { text-align: center; padding-left: 20px; }
   .ar { flex: none; color: ${t.accent}; opacity: 0.55; font-weight: 700;
