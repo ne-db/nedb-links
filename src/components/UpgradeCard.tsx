@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { getJson, postJson } from "../lib/api";
+import { useAppConfig } from "../lib/useAppConfig";
 
 /**
  * The upgrade moment — two doors, no rent.
@@ -28,6 +29,8 @@ interface BillingStatus {
 const PRESETS_CENTS = [500, 1000, 2500];
 
 export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.ReactElement {
+  const cfg = useAppConfig();
+  const emailMode = cfg?.authMode === "email";
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [amount, setAmount] = useState<number>(1000);
   const [custom, setCustom] = useState<string>("");
@@ -85,14 +88,14 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
         one profile free, forever
       </p>
       <h2 className="font-display text-2xl font-bold mt-2 text-center">
-        Want unlimited? Two doors, no rent.
+        {emailMode ? "Unlimited, once. Never monthly." : "Want unlimited? Two doors, no rent."}
       </h2>
       <p className="text-fg-muted text-sm text-center mt-2">
         You have {status.owned} of {status.freeLimit} free profile
         {status.freeLimit === 1 ? "" : "s"}. Unlock unlimited once — never monthly.
       </p>
 
-      <div className="mt-6 grid sm:grid-cols-2 gap-3">
+      <div className={`mt-6 grid gap-3 ${emailMode ? "max-w-sm mx-auto" : "sm:grid-cols-2"}`}>
         {/* Fiat door */}
         <div className="border border-ink-700 rounded-xl p-4 flex flex-col">
           <p className="font-bold text-sm">Pay what you want</p>
@@ -142,8 +145,8 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
           )}
         </div>
 
-        {/* Sovereign door */}
-        <div className="border border-accent/30 rounded-xl p-4 flex flex-col bg-accent/5">
+        {/* Sovereign door — wallet-mode only; ne-db.com never sees it */}
+        {!emailMode && <div className="border border-accent/30 rounded-xl p-4 flex flex-col bg-accent/5">
           <p className="font-bold text-sm">
             Hold {status.itcThreshold}+ ITC <span className="text-accent">◆</span>
           </p>
@@ -175,7 +178,7 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
               Re-check balance
             </span>
           </button>
-        </div>
+        </div>}
       </div>
 
       {error && <p className="mt-4 text-signal-red text-sm text-center font-mono">{error}</p>}

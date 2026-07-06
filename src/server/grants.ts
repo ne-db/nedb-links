@@ -22,7 +22,9 @@ import {
   type Role,
 } from "../lib/identity";
 import { isItcAddress } from "../lib/wallet";
+import { emailPrincipal, normalizeEmail } from "./accounts-email";
 import { authOf, requireUser, type AuthContext } from "./auth";
+import { config } from "./config";
 import { causalParent, db } from "./db";
 import { wrap } from "./util";
 
@@ -106,12 +108,35 @@ grants.post("/", requireUser, wrap(async (req, res) => {
     res.status(403).json({ error: "owner role required" });
     return;
   }
+  // The share handle matches the product: wallet mode grants by itc1…
+  // address; email mode grants by email (like sharing a doc). Both
+  // resolve to an opaque principal — RBAC below is identical.
   const body = z
-    .object({ address: z.string(), role: z.enum(ROLES) })
+    .object({
+      address: z.string().optional(),
+      email: z.string().trim().toLowerCase().email().max(254).optional(),
+      role: z.enum(ROLES),
+    })
     .safeParse(req.body);
-  if (!body.success || !isItcAddress(body.data.address)) {
-    res.status(400).json({ error: "valid itc1 address and role required" });
+  if (!body.success) {
+    res.status(400).json({ error: "valid share target and role required" });
     return;
+  }
+  let grantee: string;
+  let granteeEmail: string | undefined;
+  if (config.authMode === "email") {
+    if (!body.data.email) {
+      res.status(400).json({ error: "an email address to share with is required" });
+      return;
+    }
+    granteeEmail = normalizeEmail(body.data.email);
+    grantee = emailPrincipal(granteeEmail);
+  } else {
+    if (!body.data.address || !isItcAddress(body.data.address)) {
+      res.status(400).json({ error: "valid itc1 address and role required" });
+      return;
+    }
+    grantee = body.data.address;
   }
 
   // Authority chain: the new grant is CAUSED BY the granter's grant.
@@ -121,14 +146,15 @@ grants.post("/", requireUser, wrap(async (req, res) => {
 
   const record: GrantRecord = {
     identityId,
-    address: body.data.address,
+    address: grantee,
     role: body.data.role,
     grantedBy: auth.address,
     createdAt: new Date().toISOString(),
+    ...(granteeEmail ? { email: granteeEmail } : {}),
   };
   const put = await db.put(
     COLLECTIONS.grants,
-    grantId(identityId, body.data.address),
+    grantId(identityId, grantee),
     record as unknown as Record<string, unknown>,
     {
       causedBy: causalParent(granterGrant),

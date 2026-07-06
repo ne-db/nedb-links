@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
 
 import { Nav } from "../src/components/Nav";
-import { AccountGate } from "../src/components/AccountGate";
+import { Gate } from "../src/components/Gate";
 import { ApiError, getJson } from "../src/lib/api";
 
 export const intent = {
@@ -53,7 +53,7 @@ export default function IdentitiesPage(): React.ReactElement {
     return (
       <>
         <Nav />
-        <AccountGate onReady={() => void load()} />
+        <Gate onReady={() => void load()} />
       </>
     );
   }

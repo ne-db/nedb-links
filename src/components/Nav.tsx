@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
 
-import { clearSession, getAddress, getToken } from "../lib/api";
+import { clearSession, getAddress, getEmail, getToken } from "../lib/api";
 import { getTheme, nextTheme, THEME_LABELS, toggleTheme, type ThemeName } from "../lib/theme";
 
 /** itc1qxy2k…x0wlh — inline (keeps wallet crypto out of the nav bundle). */
@@ -29,10 +29,12 @@ export function Nav({
   actions?: React.ReactNode;
 } = {}): React.ReactElement {
   const [address, setAddress] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeName>("pro");
 
   useEffect(() => {
     setAddress(getAddress());
+    setEmail(getEmail());
     setTheme(getTheme());
   }, []);
 
@@ -74,8 +76,11 @@ export function Nav({
           </button>
           {address && (
             <div className="hidden md:flex items-center gap-2">
-              <span className="chip font-mono text-[11px] text-fg-muted" title={address}>
-                {shortAddr(address)}
+              <span
+                className={`chip text-[11px] text-fg-muted ${email ? "" : "font-mono"}`}
+                title={email ?? address}
+              >
+                {email ?? shortAddr(address)}
               </span>
               <button
                 onClick={() => {

@@ -8,6 +8,31 @@
 
 export const TOKEN_KEY = "links-admin-token";
 export const ADDRESS_KEY = "links-address";
+export const EMAIL_KEY = "links-email";
+
+/** Deployment config — which product this is. Fetched once, cached. */
+export interface AppConfig {
+  authMode: "wallet" | "email";
+  fiatDoor: boolean;
+  limitEnabled: boolean;
+}
+
+let appConfig: AppConfig | null = null;
+let appConfigPromise: Promise<AppConfig> | null = null;
+
+export function getAppConfig(): Promise<AppConfig> {
+  if (appConfig) return Promise.resolve(appConfig);
+  appConfigPromise ??= fetch("/api/config")
+    .then((r) => r.json() as Promise<AppConfig>)
+    .then((c) => (appConfig = c))
+    .catch(() => {
+      appConfigPromise = null;
+      // Unreachable server: assume wallet (the default product) so the
+      // UI still renders; the gate's own requests will surface errors.
+      return { authMode: "wallet" as const, fiatDoor: false, limitEnabled: false };
+    });
+  return appConfigPromise;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -44,13 +69,24 @@ export function getAddress(): string | null {
   }
 }
 
-/** Persist a wallet session (or operator credential). */
-export function setSession(token: string, address: string): void {
+/** Persist a session. Wallet mode passes the itc1… address; email mode
+ *  passes the eml_ principal plus the human-readable email for display. */
+export function setSession(token: string, address: string, email?: string): void {
   setToken(token);
   try {
     localStorage.setItem(ADDRESS_KEY, address);
+    if (email) localStorage.setItem(EMAIL_KEY, email);
+    else localStorage.removeItem(EMAIL_KEY);
   } catch {
     /* storage unavailable */
+  }
+}
+
+export function getEmail(): string | null {
+  try {
+    return localStorage.getItem(EMAIL_KEY);
+  } catch {
+    return null;
   }
 }
 
@@ -58,6 +94,7 @@ export function clearSession(): void {
   setToken("");
   try {
     localStorage.removeItem(ADDRESS_KEY);
+    localStorage.removeItem(EMAIL_KEY);
   } catch {
     /* storage unavailable */
   }

@@ -154,6 +154,7 @@ export const RESERVED_HANDLES = new Set([
   "api", "go", "edit", "new", "claim", "admin", "app", "assets", "static",
   "health", "docs", "about", "settings", "login", "logout", "favicon",
   "robots", "sitemap", "index", "links", "nedb", "analytics", "identities",
+  "verify", "reset",
 ]);
 
 /** Handles are lowercase, 2-40 chars, alphanumeric plus inner hyphens. */
@@ -198,12 +199,15 @@ export function roleRank(role: Role): number {
  *  grants to the granter's own grant: TRACE walks the authority chain. */
 export interface GrantRecord {
   identityId: string;
-  /** itc1… address of the grantee. */
+  /** Grantee principal: itc1… (wallet mode) or eml_… (email mode). */
   address: string;
   role: Role;
-  /** Address that granted this (or "operator"). */
+  /** Principal that granted this (or "operator"). */
   grantedBy: string;
   createdAt: string;
+  /** Email mode: the human-readable identity behind the eml_ principal
+   *  (display only — RBAC keys on the principal). */
+  email?: string;
 }
 
 /** Login challenge — short-lived, single-use. */

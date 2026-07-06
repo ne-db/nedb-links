@@ -213,3 +213,50 @@ test("duplicates and resends behave", async () => {
   assert.equal(resend.status, 200);
   assert.equal(outbox.length, n, "verified accounts get no verify resend");
 });
+
+test("grants ride emails in email mode — like sharing a doc, with provenance", async () => {
+  // A collaborator who hasn't even signed up yet can be granted —
+  // the principal is deterministic from the email.
+  const COLLAB = "stylist@example.com";
+  const owner = await post("/api/auth/login", { email: EMAIL, password: PASSWORD2 });
+  const ownerTok = ((await owner.json()) as { token: string }).token;
+
+  const byAddress = await post(
+    `/api/identities/${identityId}/grants`,
+    { address: "itc1qwhatever", role: "editor" },
+    ownerTok,
+  );
+  assert.equal(byAddress.status, 400, "email mode does not grant by address");
+
+  const r = await post(
+    `/api/identities/${identityId}/grants`,
+    { email: COLLAB, role: "editor" },
+    ownerTok,
+  );
+  assert.equal(r.status, 201, "grant by email lands");
+  const g = ((await r.json()) as { grant: { address: string; email?: string } }).grant;
+  assert.equal(g.address, emailPrincipal(COLLAB), "principal derived server-side");
+  assert.equal(g.email, COLLAB, "human-readable email stored for display");
+
+  // The collaborator signs up, verifies, and the pre-provisioned grant works.
+  const n = outbox.length;
+  await post("/api/auth/signup", { email: COLLAB, password: "collab-pass-1" });
+  const vTok = tokenFrom(outbox[n].text);
+  const v = await post("/api/auth/verify-email", { token: vTok });
+  const collabSession = ((await v.json()) as { token: string }).token;
+
+  const put = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", authorization: `Bearer ${collabSession}` },
+    body: JSON.stringify({ bio: "styled by the collaborator" }),
+  });
+  assert.equal(put.status, 200, "editor-by-email can edit — RBAC never learned a new trick");
+});
+
+test("the email landing routes are reserved — never claimable as handles", async () => {
+  for (const h of ["verify", "reset"]) {
+    const r = await fetch(`${base}/api/handles/${h}/availability`);
+    const j = (await r.json()) as { available: boolean };
+    assert.equal(j.available, false, `'${h}' is not claimable`);
+  }
+});

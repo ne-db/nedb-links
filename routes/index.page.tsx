@@ -3,9 +3,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
 import { Nav } from "../src/components/Nav";
-import { AccountGate } from "../src/components/AccountGate";
+import { Gate } from "../src/components/Gate";
 import { UpgradeCard } from "../src/components/UpgradeCard";
 import { adminHeaders } from "../src/lib/api";
+import { useAppConfig } from "../src/lib/useAppConfig";
 import { isValidHandle } from "../src/lib/identity";
 import { listTemplates } from "../src/lib/registry";
 
@@ -118,6 +119,8 @@ function ShareKit({
 }
 
 export default function ClaimPage(): React.ReactElement {
+  const cfg = useAppConfig();
+  const emailMode = cfg?.authMode === "email";
   const templates = useMemo(() => listTemplates(), []);
   const [handle, setHandle] = useState("");
   const [availability, setAvailability] = useState<Availability>("idle");
@@ -245,11 +248,12 @@ export default function ClaimPage(): React.ReactElement {
           <span className="text-accent">Every surface.</span>
         </h1>
         <p className="text-fg-muted mt-4 text-lg">
-          Your professional identity, owned like a wallet. Claim your handle and publish
-          everywhere — profile page, business card, QR code, vCard.
+          {emailMode
+            ? "Your professional identity, actually yours. Claim your handle and publish everywhere — profile page, business card, QR code, vCard."
+            : "Your professional identity, owned like a wallet. Claim your handle and publish everywhere — profile page, business card, QR code, vCard."}
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2 text-[11px] font-mono uppercase tracking-wider">
-          <span className="chip bg-ink-900 text-fg-subtle">no email required</span>
+          <span className="chip bg-ink-900 text-fg-subtle">{emailMode ? "free forever" : "no email required"}</span>
           <span className="chip bg-ink-900 text-fg-subtle">every edit versioned</span>
           <span className="chip bg-ink-900 text-fg-subtle">tamper-evident</span>
           <span className="chip bg-ink-900 text-fg-subtle">yours to self-host</span>
@@ -258,7 +262,7 @@ export default function ClaimPage(): React.ReactElement {
 
       {locked ? (
         <div className="w-full max-w-xl">
-          <AccountGate
+          <Gate
             onReady={() => {
               setLocked(false);
               // Continue the claim the user already started — no second click.

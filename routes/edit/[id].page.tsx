@@ -24,7 +24,7 @@ import {
 
 import { AccessPanel } from "../../src/components/AccessPanel";
 import { Nav } from "../../src/components/Nav";
-import { AccountGate } from "../../src/components/AccountGate";
+import { Gate } from "../../src/components/Gate";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
@@ -345,7 +345,7 @@ export default function EditPage(): React.ReactElement {
     return (
       <>
         <Nav />
-        <AccountGate onReady={() => void load()} />
+        <Gate onReady={() => void load()} />
       </>
     );
   }
