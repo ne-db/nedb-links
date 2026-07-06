@@ -16,6 +16,8 @@
  *  anonymous demo — one owner, many identities. Identity is not the user.
  */
 
+import type { BackgroundConfig } from "./background";
+
 export const SCHEMA_VERSION = 1 as const;
 
 /** Capabilities a block advertises so renderers can reason generically. */
@@ -112,6 +114,9 @@ export interface IdentityManifest {
   theme?: string;
   /** Owner-customized palette — overrides theme when present. */
   themeCustom?: CustomPalette;
+  /** Page background — chrome OVER the theme (canvas only; cards,
+   *  accents, and type stay theme-driven). Absent = theme's own bg. */
+  background?: BackgroundConfig;
   /** Ordered blocks — the body of the identity. */
   blocks: Block[];
   /** Aggregate capabilities advertised by this identity's blocks. */

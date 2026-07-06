@@ -6,6 +6,7 @@
  * editing, never for viewing.
  */
 
+import { anchorOf, bgCss, pageInkOn, type BackgroundConfig } from "../background";
 import { FONTS, isFilledUrl, type Block, type IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
 import { socialGlyph } from "./social-icons";
@@ -20,11 +21,37 @@ export interface ThemePalette {
   /** Solid anchor for color-only positions (borders, text color) when
    *  bg is a gradient. Renderers use solidBg(t), never t.bg, there. */
   base?: string;
+  /** Ink for text sitting DIRECTLY on the page background (name, bio,
+   *  headers, footer). Set by background overrides so page text stays
+   *  readable over any canvas; cards keep text/sub. Absent = text/sub. */
+  pageText?: string;
+  pageSub?: string;
 }
 
 /** The solid stand-in for gradient backgrounds. */
 export function solidBg(t: ThemePalette): string {
   return t.base ?? t.bg;
+}
+
+/** Ink for content on the page canvas (vs. inside cards). */
+export function pageText(t: ThemePalette): string {
+  return t.pageText ?? t.text;
+}
+export function pageSub(t: ThemePalette): string {
+  return t.pageSub ?? t.sub;
+}
+
+/**
+ * Compose a manifest-level background over a theme: the canvas (and its
+ * solid anchor + page ink) comes from the background; cards, accents,
+ * and card text stay with the theme. This is why Midnight-behind-Signal
+ * and Forest-behind-Mach both just work.
+ */
+export function applyBackground(t: ThemePalette, bg?: BackgroundConfig): ThemePalette {
+  if (!bg) return t;
+  const anchor = anchorOf(bg);
+  const ink = pageInkOn(anchor);
+  return { ...t, bg: bgCss(bg), base: anchor, pageText: ink.text, pageSub: ink.sub };
 }
 
 export const THEMES: Record<string, ThemePalette> = {
@@ -132,7 +159,10 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
 }
 
 export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): string {
-  const t: ThemePalette = m.themeCustom ?? THEMES[m.theme ?? "pro"] ?? THEMES.pro;
+  const t: ThemePalette = applyBackground(
+    m.themeCustom ?? THEMES[m.theme ?? "pro"] ?? THEMES.pro,
+    m.background,
+  );
   const origin = ctx.origin;
   const brand = esc(ctx.brand ?? "NEDB Links");
   const url = `${origin}/${esc(m.handle)}`;
@@ -191,7 +221,7 @@ ${fonts.link}
   :root { color-scheme: dark light; }
   * { margin: 0; box-sizing: border-box; }
   body {
-    background: ${t.bg}; color: ${t.text};
+    background: ${t.bg}; color: ${pageText(t)};
     font: 16px/1.55 ${fonts.bodyCss};
     min-height: 100dvh; display: flex; justify-content: center;
     position: relative;
@@ -231,11 +261,11 @@ ${fonts.link}
          background: ${t.card}; }
   h1 { font-size: 28px; font-weight: 800; margin-top: 16px; letter-spacing: -0.025em; }
   .hn { color: ${t.accent}; font-size: 14px; font-weight: 600; margin-top: 3px; }
-  .bio { color: ${t.sub}; font-size: 15.5px; margin: 12px auto 0; max-width: 42ch; }
+  .bio { color: ${pageSub(t)}; font-size: 15.5px; margin: 12px auto 0; max-width: 42ch; }
 
   .hd { font-size: 12px; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.14em; color: ${t.sub}; margin: 30px 6px 6px; }
-  .tx { color: ${t.sub}; font-size: 15px; margin: 10px 6px; }
+        letter-spacing: 0.14em; color: ${pageSub(t)}; margin: 30px 6px 6px; }
+  .tx { color: ${pageSub(t)}; font-size: 15px; margin: 10px 6px; }
 
   /* Link cards — weight, hierarchy, and a chevron that leans in. */
   .lk { display: flex; align-items: center; gap: 12px;
@@ -276,10 +306,10 @@ ${fonts.link}
 
   footer { text-align: center; margin-top: 52px; }
   footer a { display: inline-flex; align-items: center; gap: 6px;
-             color: ${t.sub}; font-size: 12px; text-decoration: none;
+             color: ${pageSub(t)}; font-size: 12px; text-decoration: none;
              border: 1px solid ${t.accent}1f; border-radius: 999px;
              padding: 7px 14px; transition: border-color 0.15s ease, color 0.15s ease; }
-  footer a:hover { border-color: ${t.accent}55; color: ${t.text}; }
+  footer a:hover { border-color: ${t.accent}55; color: ${pageText(t)}; }
   footer a b { color: ${t.accent}; font-weight: 700; }
 
   @media (prefers-reduced-motion: reduce) {

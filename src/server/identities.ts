@@ -19,6 +19,7 @@ import {
   type HandleRecord,
   type IdentityManifest,
 } from "../lib/identity";
+import { backgroundSchema } from "../lib/background";
 import { getBlock, getTemplate, manifestCapabilities } from "../lib/registry";
 import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
@@ -59,6 +60,8 @@ const manifestPatchSchema = z.object({
       bodyFont: z.enum(FONT_IDS).optional(),
     })
     .nullish(),
+  // Hex-validated stops + enum direction only — user strings never reach CSS.
+  background: backgroundSchema.nullish(),
   blocks: z.array(blockSchema).max(200).optional(),
 });
 
@@ -303,6 +306,11 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
       patch.data.themeCustom === null
         ? undefined
         : patch.data.themeCustom ?? current.themeCustom,
+    // Same contract for the background: null = back to the theme's canvas.
+    background:
+      patch.data.background === null
+        ? undefined
+        : patch.data.background ?? current.background,
     blocks,
     capabilities: manifestCapabilities(blocks),
     updatedAt: new Date().toISOString(),

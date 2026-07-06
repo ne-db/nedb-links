@@ -24,11 +24,13 @@ import {
 } from "lucide-react";
 
 import { AccessPanel } from "../../src/components/AccessPanel";
+import { BackgroundPicker } from "../../src/components/BackgroundPicker";
 import { Nav } from "../../src/components/Nav";
 import { Gate } from "../../src/components/Gate";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
+import type { BackgroundConfig } from "../../src/lib/background";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
 import { LogoStudio } from "../../src/components/LogoStudio";
@@ -279,6 +281,8 @@ export default function EditPage(): React.ReactElement {
   const [locked, setLocked] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [addOpen, setAddOpen] = useState(false);
+  /** Hover try-on for backgrounds — previewed, never saved. */
+  const [bgHover, setBgHover] = useState<BackgroundConfig | null>(null);
   const previewSeq = useRef(0);
 
   const blockDefs = useMemo(() => listBlocks(), []);
@@ -314,6 +318,8 @@ export default function EditPage(): React.ReactElement {
   }, [dirty]);
 
   // Live preview — debounced round-trip through the REAL renderer.
+  // Hovering a background preset swaps it in transiently on a shorter
+  // fuse, so "try it on" feels instant without spamming the server.
   useEffect(() => {
     if (!manifest) return;
     const seq = ++previewSeq.current;
@@ -328,15 +334,16 @@ export default function EditPage(): React.ReactElement {
           avatar: manifest.avatar,
           theme: manifest.theme,
           themeCustom: manifest.themeCustom,
+          background: bgHover ?? manifest.background,
           blocks: manifest.blocks,
         });
         if (seq === previewSeq.current) setPreviewHtml(html);
       } catch {
         /* preview is best-effort; the editor keeps working */
       }
-    }, 350);
+    }, bgHover ? 120 : 350);
     return () => clearTimeout(t);
-  }, [manifest]);
+  }, [manifest, bgHover]);
 
   const patch = useCallback((p: Partial<IdentityManifest>) => {
     setManifest((m) => (m ? { ...m, ...p } : m));
@@ -382,6 +389,7 @@ export default function EditPage(): React.ReactElement {
           avatar: manifest.avatar,
           theme: manifest.theme,
           themeCustom: manifest.themeCustom ?? null,
+          background: manifest.background ?? null,
           blocks: manifest.blocks,
         },
       );
@@ -806,6 +814,15 @@ export default function EditPage(): React.ReactElement {
                 </div>
               )}
             </div>
+
+            <BackgroundPicker
+              value={manifest.background}
+              onChange={(bg) => {
+                setBgHover(null);
+                patch({ background: bg });
+              }}
+              onHover={setBgHover}
+            />
 
             <AccessPanel identityId={manifest.identityId} />
           </section>

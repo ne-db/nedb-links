@@ -325,20 +325,36 @@ test("gradient tier: gradients render, solid anchors guard color-only positions"
   assert.ok(solid.includes("border: 3px solid #0b0d11"), "solid themes anchor on their own bg");
 });
 
-test("gradient tier: gradients render, solid anchors guard color-only positions", async () => {
-  const m = fixture({ theme: "aurora" });
+test("background override: canvas + page ink swap, cards stay theme-driven", () => {
+  // A LIGHT solid background under a DARK theme (signal: light text on
+  // dark cards) — the exact split that breaks naive implementations.
+  const m = fixture({
+    theme: "signal",
+    background: { kind: "solid", color: "#F8FAFC" },
+  });
   const html = renderProfileHtml(m, CTX);
-  assert.ok(html.includes("linear-gradient(165deg,#0b1026"), "gradient background renders");
-  assert.ok(html.includes("border: 3px solid #141a3a"), "avatar ring uses the solid anchor");
 
-  const card = await renderCardHtml(m, CTX);
-  assert.equal(
-    /linear-gradient\([^)]*linear-gradient/.test(card),
-    false,
-    "no gradient nested inside a gradient",
-  );
-  assert.ok(card.includes("#141a3a"), "card composes with the solid anchor");
+  assert.ok(html.includes("background: #f8fafc; color: #0f172a"), "body: background canvas + DARK page ink over the light bg");
+  assert.ok(html.includes("border: 3px solid #f8fafc"), "avatar ring anchors on the background, not the theme bg");
+  assert.ok(html.includes("background: #1e293bcc; color: #f8fafc"), "link cards keep the THEME's dark bg + light text");
+  assert.ok(html.includes(".bio { color: #0f172ab8"), "page-level sub ink follows the background");
 
-  const solid = renderProfileHtml(fixture({ theme: "mach" }), CTX);
-  assert.ok(solid.includes("border: 3px solid #0b0d11"), "solid themes anchor on their own bg");
+  // Gradient background: materialized stops render, direction maps to CSS.
+  const g = fixture({
+    theme: "pro",
+    background: {
+      kind: "gradient",
+      direction: "diagonal",
+      stops: ["#0F172A", "#1E293B"],
+      preset: "midnight",
+    },
+  });
+  const ghtml = renderProfileHtml(g, CTX);
+  assert.ok(ghtml.includes("linear-gradient(135deg,#0f172a,#1e293b)"), "diagonal gradient renders from stored stops");
+  assert.ok(ghtml.includes("border: 3px solid #172033"), "ring anchors on the channel-mean of the stops");
+  assert.ok(ghtml.includes("color: #f8fafc"), "dark gradient gets light page ink");
+
+  // No background → identical to before: theme runs everything.
+  const plain = renderProfileHtml(fixture({ theme: "signal" }), CTX);
+  assert.ok(plain.includes("background: #0f172a; color: #f8fafc"), "absent background leaves the theme canvas untouched");
 });

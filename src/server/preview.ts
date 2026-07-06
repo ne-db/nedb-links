@@ -10,6 +10,7 @@
 import { Router } from "express";
 import { z } from "zod";
 
+import { backgroundSchema } from "../lib/background";
 import {
   FONT_IDS,
   SCHEMA_VERSION,
@@ -45,6 +46,7 @@ const previewSchema = z.object({
       bodyFont: z.enum(FONT_IDS).optional(),
     })
     .optional(),
+  background: backgroundSchema.optional(),
   blocks: z
     .array(
       z.object({
@@ -78,6 +80,7 @@ preview.post("/", requireUser, wrap(async (req, res) => {
     avatar: d.avatar,
     theme: d.theme ?? "pro",
     themeCustom: d.themeCustom,
+    background: d.background,
     blocks: d.blocks as Block[],
     capabilities: manifestCapabilities(d.blocks as Block[]),
     renderers: [],

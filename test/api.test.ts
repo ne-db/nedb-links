@@ -199,6 +199,65 @@ test("custom palettes save with hex validation and render publicly", async () =>
   assert.equal(cleared.manifest.themeCustom, undefined, "explicit null clears the palette");
 });
 
+test("backgrounds persist hex-validated, render in preview, clear with null", async () => {
+  const bg = {
+    kind: "gradient",
+    direction: "diagonal",
+    stops: ["#0F172A", "#1E293B"],
+    preset: "midnight",
+  };
+  const ok = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ background: bg }),
+  });
+  assert.equal(ok.status, 200);
+  const j = (await ok.json()) as { manifest: { background?: { preset?: string; stops?: string[] } } };
+  assert.equal(j.manifest.background?.preset, "midnight", "background persisted to the engine");
+  assert.equal(j.manifest.background?.stops?.length, 2);
+
+  // The REAL renderer composes it: canvas from the background, ink by luminance.
+  const pv = await fetch(`${base}/api/preview`, {
+    method: "POST",
+    headers: authed(),
+    body: JSON.stringify({
+      identityId: "idn_bgpreview",
+      handle: "bgpreview",
+      displayName: "Canvas Check",
+      theme: "pro",
+      background: bg,
+      blocks: [],
+    }),
+  });
+  assert.equal(pv.status, 200);
+  const html = await pv.text();
+  assert.ok(html.includes("linear-gradient(135deg,#0f172a,#1e293b)"), "preview renders the stored gradient");
+  assert.ok(html.includes("border: 3px solid #172033"), "ring anchors on the stop mean");
+
+  // No CSS injection door: bad stops and bad directions bounce.
+  const badStop = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ background: { ...bg, stops: ["#0F172A", "red;} body{evil"] } }),
+  });
+  assert.equal(badStop.status, 400, "non-hex stops rejected");
+  const badDir = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ background: { ...bg, direction: "spiral" } }),
+  });
+  assert.equal(badDir.status, 400, "directions outside the enum rejected");
+
+  const clearBg = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ background: null }),
+  });
+  assert.equal(clearBg.status, 200);
+  const clearedBg = (await clearBg.json()) as { manifest: { background?: unknown } };
+  assert.equal(clearedBg.manifest.background, undefined, "explicit null returns the theme's canvas");
+});
+
 test("preview renders a DRAFT through the real renderer", async () => {
   const r = await fetch(`${base}/api/preview`, {
     method: "POST",
