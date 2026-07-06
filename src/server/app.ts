@@ -13,6 +13,7 @@ import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
 import { accounts } from "./accounts";
+import { accountsEmail } from "./accounts-email";
 import { analytics } from "./analytics";
 import { billing, mountWebhook } from "./billing";
 import { config } from "./config";
@@ -65,8 +66,19 @@ export function createApp(): Express {
     });
   });
 
+  // ── Public deployment config — the client's mode switch ──────────────────
+  app.get("/api/config", (_req, res) => {
+    res.json({
+      authMode: config.authMode,
+      fiatDoor: Boolean(config.stripeSecretKey),
+      limitEnabled: config.limitEnabled,
+    });
+  });
+
   // ── API ───────────────────────────────────────────────────────────────────
-  app.use("/api/auth", accounts);
+  // ONE account system per deployment. The other product's endpoints
+  // don't exist here — wallet routes 404 on ne-db.com and vice versa.
+  app.use("/api/auth", config.authMode === "email" ? accountsEmail : accounts);
   app.use("/api/billing", billing);
   app.use("/api/handles", handles);
   app.use("/api/identities/:id/analytics", analytics);

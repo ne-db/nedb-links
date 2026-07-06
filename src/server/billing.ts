@@ -19,6 +19,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 
 import { COLLECTIONS } from "../lib/identity";
+import { maybeSendReceiptEmail } from "./accounts-email";
 import { authOf, requireUser, type AuthContext } from "./auth";
 import { config } from "./config";
 import { db } from "./db";
@@ -197,6 +198,8 @@ export function mountWebhook(app: Express): void {
               { evidence: `pay-what-you-want supporter: ${session.id}` },
             );
             console.log(`[links] supporter entitlement written for ${address}`);
+            // Email mode: send the receipt (fire-and-forget by contract).
+            maybeSendReceiptEmail(address, session.amount_total ?? 0, session.currency ?? "usd");
           }
         }
         res.json({ received: true });

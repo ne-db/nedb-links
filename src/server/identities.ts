@@ -22,6 +22,7 @@ import {
 import { getBlock, getTemplate, manifestCapabilities } from "../lib/registry";
 import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
+import { maybeSendPublishedEmail } from "./accounts-email";
 import { authOf, requireUser } from "./auth";
 import { canClaimAnother } from "./billing";
 import { grantsOf, hasRole, writeOwnerGrant } from "./grants";
@@ -350,5 +351,8 @@ identities.post("/:id/publish", requireUser, wrap(async (req, res) => {
       evidence: `publish: ${current.handle}`,
     },
   );
+  // Email mode: "@handle is live" with the print-grade QR inlined.
+  // Fire-and-forget by contract — a receipt never blocks a publish.
+  maybeSendPublishedEmail(next, auth.address);
   res.json({ manifest: next, seq: put.seq, head: put.head });
 }));

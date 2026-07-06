@@ -1,8 +1,31 @@
 /** Server configuration — real env always wins over .env (loaded in server.ts). */
 
+/**
+ * Two products, one codebase, chosen at deploy time:
+ *   wallet — interchained.org: seed-phrase accounts, ITC-native.
+ *            No email anywhere. (Default — today's behavior.)
+ *   email  — ne-db.com: email/password/recovery. NO wallet anywhere —
+ *            no seed phrases, no ITC door, no crypto vocabulary.
+ * Deliberately NOT a "both" mode: mixing the two login stories is the
+ * exact confusion the split exists to prevent.
+ */
+export type AuthMode = "wallet" | "email";
+
 export interface LinksConfig {
   /** Express port. */
   port: number;
+  /** Which account system this deployment runs. */
+  authMode: AuthMode;
+
+  // ── Mail (required in email mode; Mail-in-a-Box friendly) ───────────────
+  smtpHost?: string;
+  smtpPort: number;
+  /** true = implicit TLS (465); false = STARTTLS on 587 (MIAB default). */
+  smtpSecure: boolean;
+  smtpUser?: string;
+  smtpPass?: string;
+  /** RFC 5322 From — e.g. "NEDB Links <no-reply@ne-db.com>". */
+  mailFrom?: string;
   /** Running nedbd instance. All state lives there. */
   nedbUrl: string;
   /** Database name inside nedbd. */
@@ -37,10 +60,19 @@ export interface LinksConfig {
 }
 
 export function loadConfig(): LinksConfig {
+  const authMode: AuthMode =
+    process.env.LINKS_AUTH_MODE === "email" ? "email" : "wallet";
   return {
     // LINKS_API_PORT is canonical — the generic PORT is read by many
     // tools (vite, PaaS runtimes) and port collisions/skew follow.
     port: Number(process.env.LINKS_API_PORT || process.env.PORT || 3001),
+    authMode,
+    smtpHost: process.env.SMTP_HOST || undefined,
+    smtpPort: Number(process.env.SMTP_PORT || 587),
+    smtpSecure: process.env.SMTP_SECURE === "1" || process.env.SMTP_SECURE === "true",
+    smtpUser: process.env.SMTP_USER || undefined,
+    smtpPass: process.env.SMTP_PASS || undefined,
+    mailFrom: process.env.MAIL_FROM || undefined,
     nedbUrl: process.env.NEDB_URL || "http://127.0.0.1:7070",
     nedbDb: process.env.NEDB_DB || "links",
     nedbToken: process.env.NEDB_TOKEN || undefined,
@@ -66,3 +98,22 @@ export function loadConfig(): LinksConfig {
 }
 
 export const config = loadConfig();
+
+/**
+ * Email mode cannot function without a mail path — verify and reset
+ * flows ARE the account system. Fail fast and loud at boot rather than
+ * letting signups silently dead-end. Tests inject a capture transport
+ * via LINKS_MAIL_TEST=1, which skips the requirement.
+ */
+export function validateConfig(c: LinksConfig): string[] {
+  const problems: string[] = [];
+  if (c.authMode === "email" && process.env.LINKS_MAIL_TEST !== "1") {
+    if (!c.smtpHost) problems.push("SMTP_HOST is required when LINKS_AUTH_MODE=email");
+    if (!c.smtpUser || !c.smtpPass)
+      problems.push("SMTP_USER / SMTP_PASS are required when LINKS_AUTH_MODE=email");
+    if (!c.mailFrom) problems.push("MAIL_FROM is required when LINKS_AUTH_MODE=email");
+    if (!c.publicOrigin)
+      problems.push("PUBLIC_ORIGIN is required when LINKS_AUTH_MODE=email (links inside emails)");
+  }
+  return problems;
+}

@@ -14,9 +14,36 @@
 import type { NextFunction, Request, Response } from "express";
 
 import { COLLECTIONS, type SessionRecord } from "../lib/identity";
-import { sha256Hex } from "../lib/wallet";
+import { randomHex32, sha256Hex } from "../lib/wallet";
 import { config } from "./config";
 import { db } from "./db";
+
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Issue a 30-day session for a principal — `itc1…` (wallet mode) or
+ * `eml_…` (email mode). Only the sha256 of the token is ever stored;
+ * the bearer token itself exists once, in the response.
+ */
+export async function issueSession(
+  principal: string,
+): Promise<{ token: string; expiresAt: string }> {
+  const token = randomHex32();
+  const now = Date.now();
+  const session: SessionRecord = {
+    tokenHash: sha256Hex(token),
+    address: principal,
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + SESSION_TTL_MS).toISOString(),
+  };
+  await db.put(
+    COLLECTIONS.sessions,
+    session.tokenHash,
+    session as unknown as Record<string, unknown>,
+    { evidence: `session for ${principal}` },
+  );
+  return { token, expiresAt: session.expiresAt };
+}
 
 export interface AuthContext {
   address: string;

@@ -232,4 +232,21 @@ export const COLLECTIONS = {
   sessions: "sessions",
   grants: "grants",
   entitlements: "entitlements",
+  accounts: "accounts",
 } as const;
+
+/**
+ * Email-mode account (LINKS_AUTH_MODE=email — the ne-db.com product).
+ * Doc id = principal (`eml_` + sha256(email)[:20]) — the same opaque
+ * string that rides sessions, grants, and entitlements, so RBAC and
+ * billing never learned a new trick. Wallet mode never reads this
+ * collection; email mode never sees a seed phrase.
+ */
+export interface AccountRecord {
+  principal: string;
+  email: string;
+  /** scrypt$N$r$p$salt_b64$key_b64 — params recorded for future upgrades. */
+  passwordHash: string;
+  createdAt: string;
+  verifiedAt?: string;
+}

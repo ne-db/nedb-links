@@ -1,0 +1,215 @@
+/**
+ * Email-mode live suite — the ne-db.com product against a REAL nedbd.
+ *
+ * Boots the app with LINKS_AUTH_MODE=email and LINKS_MAIL_TEST=1 (mail
+ * lands in the in-process outbox instead of a wire), then walks every
+ * account flow end-to-end: signup → verify → claim → publish (with the
+ * QR-bearing "you're live" email) → forgot → reset → session
+ * revocation. Also proves the product split: wallet endpoints DO NOT
+ * EXIST here.
+ */
+
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+import type { Server } from "node:http";
+
+process.env.NEDB_DB = `links_email_${Date.now().toString(36)}`;
+process.env.LINKS_AUTH_MODE = "email";
+process.env.LINKS_MAIL_TEST = "1";
+process.env.PUBLIC_ORIGIN = "http://links.test";
+delete process.env.LINKS_ADMIN_TOKEN;
+
+const { createApp, ensureDatabase } = await import("../src/server/app");
+const { db } = await import("../src/server/db");
+const { outbox } = await import("../src/server/mailer");
+const { emailPrincipal, hashPassword, verifyPassword } = await import(
+  "../src/server/accounts-email"
+);
+
+let server: Server;
+let base: string;
+
+const EMAIL = "marisa@example.com";
+const PASSWORD = "correct-horse-battery";
+const PASSWORD2 = "staple-battery-horse!";
+
+function post(path: string, body: unknown, token?: string): Promise<Response> {
+  return fetch(`${base}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function tokenFrom(text: string): string {
+  const m = text.match(/token=(tok_[a-f0-9]+)/);
+  assert.ok(m, "mail contains a token link");
+  return m[1];
+}
+
+before(async () => {
+  const reachable = await db.ping();
+  assert.ok(reachable, "nedbd is not reachable — start it before running test:api");
+  await ensureDatabase();
+  server = createApp().listen(0);
+  const addr = server.address();
+  assert.ok(addr && typeof addr === "object");
+  base = `http://127.0.0.1:${addr.port}`;
+});
+
+after(async () => {
+  server?.close();
+  try {
+    await db.dropDatabase();
+  } catch {
+    /* best-effort */
+  }
+});
+
+test("scrypt: hash/verify round trip, wrong password rejected, params recorded", async () => {
+  const h = await hashPassword("s3cret-enough");
+  assert.ok(h.startsWith("scrypt$16384$8$1$"), "parameters recorded in the hash");
+  assert.equal(await verifyPassword("s3cret-enough", h), true);
+  assert.equal(await verifyPassword("not-it", h), false);
+  assert.equal(await verifyPassword("s3cret-enough", "garbage"), false);
+});
+
+test("the product split is real: email mode has no wallet endpoints", async () => {
+  const cfg = (await (await fetch(`${base}/api/config`)).json()) as { authMode: string };
+  assert.equal(cfg.authMode, "email");
+  const chal = await post("/api/auth/challenge", { address: "itc1qwhatever" });
+  assert.equal(chal.status, 404, "wallet challenge does not exist on this product");
+});
+
+let sessionToken = "";
+let principal = "";
+let identityId = "";
+
+test("signup: validation, verify mail, login gated until confirmed", async () => {
+  const weak = await post("/api/auth/signup", { email: EMAIL, password: "short" });
+  assert.equal(weak.status, 400, "weak passwords rejected");
+
+  const n = outbox.length;
+  const r = await post("/api/auth/signup", { email: EMAIL, password: PASSWORD });
+  assert.equal(r.status, 201, "signup accepted");
+  assert.equal(outbox.length, n + 1, "exactly one mail sent");
+  const mail = outbox[n];
+  assert.equal(mail.to, EMAIL);
+  assert.match(mail.subject, /Confirm your email/);
+  assert.ok(mail.html.includes("/verify?token="), "html carries the verify link");
+  assert.ok(mail.text.includes("/verify?token="), "plain-text twin carries it too");
+
+  const early = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+  assert.equal(early.status, 403, "login refuses unverified accounts");
+  const j = (await early.json()) as { needsVerify?: boolean };
+  assert.equal(j.needsVerify, true);
+});
+
+test("verify-email: single-use token, welcome mail, signed straight in", async () => {
+  const verifyTok = tokenFrom(outbox[outbox.length - 1].text);
+  const n = outbox.length;
+
+  const r = await post("/api/auth/verify-email", { token: verifyTok });
+  assert.equal(r.status, 200, "verification succeeds");
+  const j = (await r.json()) as { token: string; address: string; email: string };
+  assert.ok(j.token.length >= 32, "session issued immediately");
+  assert.equal(j.address, emailPrincipal(EMAIL), "principal is the eml_ hash");
+  assert.ok(j.address.startsWith("eml_"));
+  assert.equal(j.email, EMAIL);
+  sessionToken = j.token;
+  principal = j.address;
+
+  assert.equal(outbox.length, n + 1, "welcome mail sent");
+  assert.match(outbox[n].subject, /You're in/);
+
+  const reuse = await post("/api/auth/verify-email", { token: verifyTok });
+  assert.equal(reuse.status, 401, "verify tokens are single-use");
+});
+
+test("claim + publish ride eml_ principals; 'you're live' mail carries the QR", async () => {
+  const claim = await post("/api/identities", {
+    handle: "marisa-mail",
+    displayName: "Marisa",
+    template: "creator",
+  }, sessionToken);
+  assert.equal(claim.status, 201, "claim works with an email session");
+  identityId = ((await claim.json()) as { manifest: { identityId: string } }).manifest.identityId;
+
+  const n = outbox.length;
+  const pub = await post(`/api/identities/${identityId}/publish`, {}, sessionToken);
+  assert.equal(pub.status, 200, "publish succeeds");
+
+  // The published mail is fire-and-forget — give it a beat to land.
+  for (let i = 0; i < 40 && outbox.length === n; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  assert.equal(outbox.length, n + 1, "published mail sent");
+  const mail = outbox[n];
+  assert.match(mail.subject, /@marisa-mail is live/);
+  assert.ok(mail.html.includes("cid:qr@links"), "QR referenced inline");
+  assert.equal(mail.attachments?.length, 1, "QR attached");
+  const qr = mail.attachments![0];
+  assert.equal(qr.cid, "qr@links");
+  assert.equal(qr.filename, "marisa-mail-qr.png");
+  // PNG magic bytes — it's a real image, not a placeholder.
+  assert.deepEqual([...qr.content.subarray(0, 4)], [0x89, 0x50, 0x4e, 0x47]);
+});
+
+test("login: verified accounts in, wrong credentials out (same error shape)", async () => {
+  const good = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+  assert.equal(good.status, 200);
+
+  const badPw = await post("/api/auth/login", { email: EMAIL, password: "wrong-wrong-wrong" });
+  assert.equal(badPw.status, 401);
+  const badUser = await post("/api/auth/login", { email: "ghost@example.com", password: "whatever-12" });
+  assert.equal(badUser.status, 401);
+  const a = (await badPw.json()) as { error: string };
+  const b = (await badUser.json()) as { error: string };
+  assert.equal(a.error, b.error, "unknown email and wrong password are indistinguishable");
+});
+
+test("forgot: enumeration-safe; reset rotates the password and revokes sessions", async () => {
+  const n = outbox.length;
+  const ghost = await post("/api/auth/forgot", { email: "ghost@example.com" });
+  assert.equal(ghost.status, 200, "unknown email still 200");
+  assert.equal(outbox.length, n, "…and sends nothing");
+
+  const real = await post("/api/auth/forgot", { email: EMAIL });
+  assert.equal(real.status, 200);
+  assert.equal(outbox.length, n + 1, "reset mail sent for the real account");
+  assert.match(outbox[n].subject, /Reset your password/);
+  const resetTok = tokenFrom(outbox[n].text);
+
+  const weak = await post("/api/auth/reset", { token: resetTok, password: "short" });
+  assert.equal(weak.status, 400, "weak replacement rejected (token NOT burned by validation)");
+
+  const r = await post("/api/auth/reset", { token: resetTok, password: PASSWORD2 });
+  assert.equal(r.status, 200, "reset succeeds");
+
+  // The pre-reset session is dead.
+  const stale = await fetch(`${base}/api/identities`, {
+    headers: { authorization: `Bearer ${sessionToken}` },
+  });
+  assert.equal(stale.status, 401, "old sessions revoked on reset");
+
+  const oldPw = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+  assert.equal(oldPw.status, 401, "old password dead");
+  const newPw = await post("/api/auth/login", { email: EMAIL, password: PASSWORD2 });
+  assert.equal(newPw.status, 200, "new password lives");
+
+  const reuse = await post("/api/auth/reset", { token: resetTok, password: "another-try-9" });
+  assert.equal(reuse.status, 401, "reset tokens are single-use");
+});
+
+test("duplicates and resends behave", async () => {
+  const dup = await post("/api/auth/signup", { email: EMAIL, password: "whatever-123" });
+  assert.equal(dup.status, 409, "verified accounts cannot be re-signed-up");
+
+  const n = outbox.length;
+  const resend = await post("/api/auth/resend-verify", { email: EMAIL });
+  assert.equal(resend.status, 200);
+  assert.equal(outbox.length, n, "verified accounts get no verify resend");
+});

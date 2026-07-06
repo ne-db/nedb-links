@@ -18,7 +18,6 @@ import { z } from "zod";
 import {
   COLLECTIONS,
   type ChallengeRecord,
-  type SessionRecord,
 } from "../lib/identity";
 import {
   buildAuthMessage,
@@ -27,13 +26,13 @@ import {
   sha256Hex,
   verifyMessage,
 } from "../lib/wallet";
+import { issueSession } from "./auth";
 import { db } from "./db";
 import { wrap } from "./util";
 
 export const accounts = Router();
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** POST /api/auth/challenge — start a login. */
 accounts.post("/challenge", wrap(async (req, res) => {
@@ -103,22 +102,8 @@ accounts.post("/verify", wrap(async (req, res) => {
   // Single-use: tombstone the challenge (history preserved in the DAG).
   await db.delete(COLLECTIONS.challenges, challengeId);
 
-  const token = randomHex32();
-  const now = Date.now();
-  const session: SessionRecord = {
-    tokenHash: sha256Hex(token),
-    address,
-    createdAt: new Date(now).toISOString(),
-    expiresAt: new Date(now + SESSION_TTL_MS).toISOString(),
-  };
-  await db.put(
-    COLLECTIONS.sessions,
-    session.tokenHash,
-    session as unknown as Record<string, unknown>,
-    { evidence: `session for ${address}` },
-  );
-
-  res.json({ token, address, expiresAt: session.expiresAt });
+  const session = await issueSession(address);
+  res.json({ token: session.token, address, expiresAt: session.expiresAt });
 }));
 
 /** POST /api/auth/logout — revoke the presented session. */

@@ -25,7 +25,16 @@ function loadEnv(): void {
 loadEnv();
 
 // Imported AFTER loadEnv so config reads the resolved environment.
-const { config } = await import("./src/server/config");
+const { config, validateConfig } = await import("./src/server/config");
+
+{
+  const problems = validateConfig(config);
+  if (problems.length > 0) {
+    console.error("\x1b[31m[links] configuration is incomplete:\x1b[0m");
+    for (const p of problems) console.error(`  - ${p}`);
+    process.exit(1);
+  }
+}
 const { createApp, ensureDatabase } = await import("./src/server/app");
 const { warnIfOpen } = await import("./src/server/auth");
 
