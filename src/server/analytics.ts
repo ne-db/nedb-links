@@ -38,20 +38,89 @@ interface GroupRow {
   [k: string]: unknown;
 }
 
-/** One live GROUP BY, normalized to sorted {key, count} rows. */
+/** App-side aggregation — the pure reducer behind the engine fallback.
+ *  Exported for unit tests. */
+export function aggregateBy(
+  rows: Array<Record<string, unknown>>,
+  by: string,
+): Array<{ key: string; count: number }> {
+  const m = new Map<string, number>();
+  for (const r of rows) {
+    const k = String(r[by] ?? "unknown");
+    m.set(k, (m.get(k) ?? 0) + 1);
+  }
+  return [...m.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/** Did the engine actually aggregate? Native GROUP BY rows carry a
+ *  numeric `count`; engines that parse-but-ignore the clause (rust
+ *  nedb-v2 @ 2.6.1) return the RAW filtered events instead. */
+function isAggregated(rows: GroupRow[]): boolean {
+  return rows.length > 0 && rows.every((r) => typeof r.count === "number");
+}
+
+let warnedFallback = false;
+function warnFallbackOnce(): void {
+  if (warnedFallback) return;
+  warnedFallback = true;
+  console.warn(
+    "[links] engine did not aggregate GROUP BY — computing analytics app-side. " +
+      "Native aggregation works on the Python engine; the rust nedb-v2 daemon " +
+      "parses but does not yet execute GROUP BY (parity gap, queued upstream).",
+  );
+}
+
+/**
+ * One live GROUP BY, normalized to sorted {key, count} rows — correct on
+ * EVERY engine build:
+ *   - Python 2.6.1:      native aggregation (bare or explicit COUNT).
+ *   - rust nedb-core:    native aggregation.
+ *   - rust nedb-v2:      REQUIRES the aggregate keyword and then ignores
+ *                        the clause at execution, returning raw filtered
+ *                        events — detected and aggregated app-side from
+ *                        those same rows (no second query).
+ *   - parse error paths: both daemons swallow NQL errors into [] — one
+ *                        bounded plain-WHERE fetch distinguishes "truly
+ *                        empty" from "engine couldn't", then reduces.
+ */
 async function groupCount(
   where: string,
   by: string,
 ): Promise<Array<{ key: string; count: number }>> {
-  const rows = (await db.query(
-    `FROM ${COLLECTIONS.events} WHERE ${where} GROUP BY ${by}`,
-  )) as GroupRow[];
-  return rows
-    .map((r) => ({
-      key: String(r[by] ?? "unknown"),
-      count: Number(r.count) || 0,
-    }))
-    .sort((a, b) => b.count - a.count);
+  let rows: GroupRow[] = [];
+  try {
+    rows = (await db.query(
+      `FROM ${COLLECTIONS.events} WHERE ${where} GROUP BY ${by} COUNT`,
+    )) as GroupRow[];
+  } catch {
+    rows = [];
+  }
+
+  if (isAggregated(rows)) {
+    return rows
+      .map((r) => ({ key: String(r[by] ?? "unknown"), count: Number(r.count) }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  if (rows.length > 0) {
+    // Engine returned raw events (GROUP BY ignored) — count them here.
+    warnFallbackOnce();
+    return aggregateBy(rows, by);
+  }
+
+  // Empty: either no events at all, or the engine errored into [].
+  try {
+    const raw = (await db.query(
+      `FROM ${COLLECTIONS.events} WHERE ${where} LIMIT 10000`,
+    )) as GroupRow[];
+    if (raw.length === 0) return [];
+    warnFallbackOnce();
+    return aggregateBy(raw, by);
+  } catch {
+    return [];
+  }
 }
 
 function blockLabel(m: IdentityManifest, blockId: string): { label: string; url: string | null } {
