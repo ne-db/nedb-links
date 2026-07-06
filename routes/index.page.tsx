@@ -7,8 +7,9 @@ import { Gate } from "../src/components/Gate";
 import { UpgradeCard } from "../src/components/UpgradeCard";
 import { adminHeaders } from "../src/lib/api";
 import { useAppConfig } from "../src/lib/useAppConfig";
-import { isValidHandle } from "../src/lib/identity";
+import { isValidHandle, type Block } from "../src/lib/identity";
 import { listTemplates } from "../src/lib/registry";
+import { THEMES } from "../src/lib/renderers/html";
 
 export const intent = {
   purpose:
@@ -18,6 +19,73 @@ export const intent = {
 };
 
 type Availability = "idle" | "checking" | "available" | "taken" | "invalid";
+
+/**
+ * The template gallery — show, don't quiz. Each card is a miniature of
+ * what the template ACTUALLY seeds: its blocks, in its theme's colors.
+ * Nothing here gates the claim — a starting point is pre-picked and
+ * everything is editable after.
+ */
+function TemplateMini({
+  blocks,
+  theme,
+}: {
+  blocks: Block[];
+  theme: string;
+}): React.ReactElement {
+  const t = THEMES[theme] ?? THEMES.pro;
+  return (
+    <div
+      className="h-16 rounded-t-[inherit] px-3 py-2 flex flex-col gap-1 overflow-hidden"
+      style={{ background: t.bg }}
+    >
+      {blocks.slice(0, 4).map((b) => {
+        if (b.type === "header") {
+          return (
+            <div
+              key={b.id}
+              className="h-1 w-8 rounded-full shrink-0"
+              style={{ background: t.sub, opacity: 0.8 }}
+            />
+          );
+        }
+        if (b.type === "social") {
+          return (
+            <div key={b.id} className="flex gap-1 shrink-0">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: t.accent, opacity: 0.85 }}
+                />
+              ))}
+            </div>
+          );
+        }
+        if (b.type === "text") {
+          return (
+            <div
+              key={b.id}
+              className="h-1 w-full rounded-full shrink-0"
+              style={{ background: t.sub, opacity: 0.4 }}
+            />
+          );
+        }
+        // link / embed — the tappable bar with its accent dot
+        return (
+          <div
+            key={b.id}
+            className="h-2.5 w-full rounded-[4px] flex items-center gap-1 px-1 shrink-0"
+            style={{ background: t.card }}
+          >
+            <span className="w-1 h-1 rounded-full shrink-0" style={{ background: t.accent }} />
+            <span className="h-0.5 flex-1 rounded-full" style={{ background: t.text, opacity: 0.5 }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * The publish moment: every output of the loop in one place.
@@ -121,7 +189,16 @@ function ShareKit({
 export default function ClaimPage(): React.ReactElement {
   const cfg = useAppConfig();
   const emailMode = cfg?.authMode === "email";
-  const templates = useMemo(() => listTemplates(), []);
+  // Seed each template once for its gallery card — the mini previews
+  // show the REAL scaffold (blocks + theme), not a label.
+  const templates = useMemo(
+    () =>
+      listTemplates().map((t) => {
+        const seeded = t.seed({ displayName: "You", handle: "you" });
+        return { ...t, previewBlocks: seeded.blocks, previewTheme: seeded.theme ?? "pro" };
+      }),
+    [],
+  );
   const [handle, setHandle] = useState("");
   const [availability, setAvailability] = useState<Availability>("idle");
   const [displayName, setDisplayName] = useState("");
@@ -299,22 +376,37 @@ export default function ClaimPage(): React.ReactElement {
               className="field field-lg"
             />
 
-            <label className="label mt-6">Who are you?</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTemplate(t.id)}
-                  title={t.description}
-                  className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
-                    template === t.id
-                      ? "border-accent bg-accent/10 text-accent-soft"
-                      : "border-ink-700 bg-ink-850 text-fg-muted hover:bg-ink-800"
-                  }`}
-                >
-                  {t.name}
-                </button>
-              ))}
+            <div className="mt-6 flex items-baseline justify-between gap-3">
+              <label className="label !mb-0">Starting point</label>
+              <span className="text-[11px] text-fg-subtle">
+                optional — seeds example blocks &amp; a look, change anything later
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {templates.map((t) => {
+                const selected = template === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTemplate(t.id)}
+                    title={t.description}
+                    className={`panel panel-lift overflow-hidden text-left !rounded-xl ${
+                      selected ? "ring-2 ring-accent border-accent/40" : ""
+                    }`}
+                  >
+                    <TemplateMini blocks={t.previewBlocks} theme={t.previewTheme} />
+                    <span className="block px-2.5 py-1.5">
+                      <span className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-semibold truncate">{t.name}</span>
+                        {selected && <span className="text-accent-soft text-xs shrink-0">✓</span>}
+                      </span>
+                      <span className="block text-[10px] text-fg-subtle leading-tight truncate">
+                        {t.vertical}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <button
