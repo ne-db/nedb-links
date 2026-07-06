@@ -368,21 +368,19 @@ export default function EditPage(): React.ReactElement {
     <>
       <Nav />
 
-      {/* ── Studio action bar — sticky, Publish is THE button ───────────── */}
-      <div className="streamline sticky top-14 z-10 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-5 py-3 flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+      {/* ── Studio action bar — one dense line; Publish is THE button ────── */}
+      <div className="streamline sticky top-12 z-10 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
+        <div className="max-w-7xl mx-auto px-5 py-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Link href="/identities" className="icon-btn shrink-0" title="All identities">
-              <ArrowLeft size={17} />
+              <ArrowLeft size={16} />
             </Link>
-            <div className="min-w-0">
-              <h1 className="font-display text-lg font-bold leading-tight truncate">
-                {manifest.displayName}
-              </h1>
-              <p className="font-mono text-[11px] text-accent-soft leading-tight truncate">
-                @{manifest.handle}
-              </p>
-            </div>
+            <h1 className="font-display text-base font-bold truncate">
+              {manifest.displayName}
+            </h1>
+            <span className="hidden sm:inline font-mono text-[11px] text-accent-soft truncate shrink-0">
+              @{manifest.handle}
+            </span>
             <span
               className={`chip shrink-0 ${
                 published
@@ -395,7 +393,7 @@ export default function EditPage(): React.ReactElement {
               {dirty ? " · unsaved" : ""}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Link
               href={`/analytics/${encodeURIComponent(manifest.identityId)}`}
               className="icon-btn"
@@ -404,16 +402,16 @@ export default function EditPage(): React.ReactElement {
               <BarChart3 size={16} />
             </Link>
             {published && (
-              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !px-3">
-                <ExternalLink size={15} /> View
+              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !py-1.5 !px-2.5">
+                <ExternalLink size={14} /> View
               </a>
             )}
-            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary" title="⌘S">
+            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary !py-1.5" title="⌘S">
               {busy === "save" ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary">
+            <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary !py-1.5">
               {busy === "publish" ? "Publishing…" : published ? "Republish" : "Publish"}
-              <ArrowUpRight size={15} />
+              <ArrowUpRight size={14} />
             </button>
           </div>
         </div>
@@ -672,7 +670,7 @@ export default function EditPage(): React.ReactElement {
           </section>
 
           {/* ── Right: the hero — a floating device, always alive ─────────── */}
-          <aside className="lg:sticky lg:top-32">
+          <aside className="lg:sticky lg:top-24">
             <div className="device max-w-[390px] mx-auto">
               <div className="device-notch" />
               <div className="device-screen">

@@ -145,27 +145,25 @@ export default function AnalyticsPage(): React.ReactElement {
       <Nav />
 
       {/* ── Header bar ─────────────────────────────────────────────────── */}
-      <div className="streamline sticky top-14 z-10 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-5 py-3 flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="streamline sticky top-12 z-10 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-5 py-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Link href={`/edit/${encodeURIComponent(data.identityId)}`} className="icon-btn shrink-0" title="Back to editor">
-              <ArrowLeft size={17} />
+              <ArrowLeft size={16} />
             </Link>
-            <div className="min-w-0">
-              <h1 className="font-display text-lg font-bold leading-tight flex items-center gap-2">
-                <BarChart3 size={17} className="text-accent-soft shrink-0" /> Analytics
-              </h1>
-              <p className="font-mono text-[11px] text-accent-soft leading-tight truncate">
-                @{data.handle}
-              </p>
-            </div>
+            <h1 className="font-display text-base font-bold flex items-center gap-2 truncate">
+              <BarChart3 size={16} className="text-accent-soft shrink-0" /> Analytics
+            </h1>
+            <span className="hidden sm:inline font-mono text-[11px] text-accent-soft truncate shrink-0">
+              @{data.handle}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <a href={`/${data.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !px-3">
-              <ExternalLink size={15} /> Open page
+          <div className="flex items-center gap-1.5">
+            <a href={`/${data.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !py-1.5 !px-2.5">
+              <ExternalLink size={14} /> Open page
             </a>
-            <button onClick={() => void load()} disabled={busy} className="btn btn-secondary">
-              <RefreshCw size={15} className={busy ? "animate-spin" : ""} />
+            <button onClick={() => void load()} disabled={busy} className="btn btn-secondary !py-1.5">
+              <RefreshCw size={14} className={busy ? "animate-spin" : ""} />
               {busy ? "Reading…" : "Refresh"}
             </button>
           </div>
