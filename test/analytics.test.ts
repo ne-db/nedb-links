@@ -97,7 +97,7 @@ test("claim, wire two links, publish", async () => {
     headers: authed(),
     body: JSON.stringify({ handle: "signal-tester", displayName: "Signal Tester", template: "creator" }),
   });
-  assert.equal(r.status, 200, "claim succeeds");
+  assert.equal(r.status, 201, "claim creates (201 — the REST contract)");
   const j = (await r.json()) as { manifest: { identityId: string } };
   identityId = j.manifest.identityId;
 
