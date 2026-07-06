@@ -69,10 +69,7 @@ export default function IdentitiesPage(): React.ReactElement {
               One owner, many identities — each with its own handle and every surface.
             </p>
           </div>
-          <Link
-            href="/"
-            className="rounded-xl bg-accent text-ink-950 font-bold px-4 py-2.5 hover:brightness-110 transition"
-          >
+          <Link href="/" className="btn btn-primary">
             + Claim a handle
           </Link>
         </header>
@@ -94,19 +91,20 @@ export default function IdentitiesPage(): React.ReactElement {
             <Link
               key={idn.identityId}
               href={`/edit/${idn.identityId}`}
-              className="group grid sm:grid-cols-[1fr_auto] gap-3 items-center bg-ink-900 border border-ink-800 rounded-2xl px-5 py-4 hover:border-accent/40 transition"
+              className="group panel panel-lift grid sm:grid-cols-[1fr_auto] gap-3 items-center px-5 py-4 hover:border-accent/40"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5">
                   <span className="font-bold text-lg truncate">{idn.displayName}</span>
                   <span
-                    className={`text-[11px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 border ${
+                    className={`chip ${
                       idn.status === "published"
                         ? "text-signal-green border-signal-green/40 bg-signal-green/10"
                         : "text-signal-amber border-signal-amber/40 bg-signal-amber/10"
                     }`}
                   >
-                    {idn.status}
+                    <span className={`w-1.5 h-1.5 rounded-full ${idn.status === "published" ? "bg-signal-green" : "bg-signal-amber"}`} />
+                    {idn.status === "published" ? "Live" : "Draft"}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
@@ -125,12 +123,12 @@ export default function IdentitiesPage(): React.ReactElement {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded-lg border border-ink-700 text-fg-muted px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
+                    className="btn btn-secondary !py-1.5 !px-3"
                   >
                     View ↗
                   </a>
                 )}
-                <span className="rounded-lg bg-accent/10 border border-accent/40 text-accent-soft px-3 py-1.5 group-hover:bg-accent/20 transition">
+                <span className="btn btn-accent-ghost !py-1.5 !px-3 group-hover:bg-accent/10">
                   Edit
                 </span>
               </div>

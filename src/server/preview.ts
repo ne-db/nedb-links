@@ -11,6 +11,7 @@ import { Router } from "express";
 import { z } from "zod";
 
 import {
+  FONT_IDS,
   SCHEMA_VERSION,
   type Block,
   type IdentityManifest,
@@ -40,6 +41,8 @@ const previewSchema = z.object({
       text: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       sub: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      headingFont: z.enum(FONT_IDS).optional(),
+      bodyFont: z.enum(FONT_IDS).optional(),
     })
     .optional(),
   blocks: z

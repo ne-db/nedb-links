@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
 
 import { clearSession, getAddress, getToken } from "../lib/api";
-import { getTheme, toggleTheme, type ThemeName } from "../lib/theme";
+import { getTheme, nextTheme, THEME_LABELS, toggleTheme, type ThemeName } from "../lib/theme";
 
 /** itc1qxy2k…x0wlh — inline (keeps wallet crypto out of the nav bundle). */
 function shortAddr(addr: string): string {
@@ -20,31 +20,33 @@ export function Nav(): React.ReactElement {
 
   return (
     <nav className="w-full border-b border-ink-800 bg-ink-900/85 backdrop-blur sticky top-0 z-20">
-      <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
-        <Link href="/" className="font-display font-bold text-lg tracking-tight text-fg">
-          <span className="text-accent">⬡</span> NEDB Links
-        </Link>
-        <div className="flex items-center gap-3 sm:gap-4 text-sm font-semibold">
-          <Link href="/identities" className="text-fg-muted hover:text-accent-soft transition">
-            Identities
+      <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-6 min-w-0">
+          <Link href="/" className="font-display font-bold text-lg tracking-tight text-fg shrink-0">
+            <span className="text-accent">⬡</span> NEDB Links
           </Link>
           <Link
-            href="/"
-            className="rounded-lg bg-accent/10 border border-accent/40 text-accent-soft px-3 py-1.5 hover:bg-accent/20 transition"
+            href="/identities"
+            className="hidden sm:inline text-sm font-medium text-fg-muted hover:text-fg transition"
           >
-            + Claim
+            Identities
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3 text-sm">
+          <Link href="/" className="btn btn-primary !py-1.5 !px-3.5">
+            Claim
           </Link>
           <button
             onClick={() => setTheme(toggleTheme())}
-            className="rounded-full border border-ink-700 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-fg-subtle hover:text-accent-soft hover:border-accent/40 transition"
-            title={theme === "pro" ? "Switch to native (dark) theme" : "Switch to pro (light) theme"}
+            className="chip font-mono text-[10px] uppercase tracking-widest text-fg-subtle hover:text-accent-soft hover:border-accent/40 transition"
+            title={`Theme: ${theme} — click for ${nextTheme(theme)}`}
           >
-            {theme === "pro" ? "◆ native" : "○ pro"}
+            {THEME_LABELS[theme]}
           </button>
           {address && (
             <div className="flex items-center gap-2">
               <span
-                className="hidden sm:inline font-mono text-[11px] text-fg-muted border border-ink-700 rounded-full px-2.5 py-1"
+                className="hidden md:inline-flex chip font-mono text-[11px] text-fg-muted"
                 title={address}
               >
                 {shortAddr(address)}
@@ -58,7 +60,7 @@ export function Nav(): React.ReactElement {
                   clearSession();
                   window.location.href = "/";
                 }}
-                className="text-fg-subtle hover:text-signal-red transition text-xs"
+                className="text-fg-subtle hover:text-signal-red transition text-xs font-medium"
                 title="Sign out"
               >
                 Sign out

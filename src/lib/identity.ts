@@ -64,9 +64,33 @@ export interface CustomPalette {
   text: string;
   sub: string;
   accent: string;
+  /** Curated font picks — ids into FONTS, never raw strings. */
+  headingFont?: FontId;
+  bodyFont?: FontId;
 }
 
 export const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Curated font choices — the enum IS the input; CSS stacks and Google
+ * Fonts params come from THIS map only, never from user strings.
+ * Ten registers, from boardroom to MySpace chaos.
+ */
+export const FONTS = {
+  system:         { label: "System (clean)",        css: "system-ui, -apple-system, 'Segoe UI', sans-serif", google: null },
+  inter:          { label: "Inter (modern)",        css: "'Inter', system-ui, sans-serif",            google: "Inter:wght@400;600;800" },
+  "space-grotesk":{ label: "Space Grotesk (tech)",  css: "'Space Grotesk', system-ui, sans-serif",    google: "Space+Grotesk:wght@400;600;700" },
+  poppins:        { label: "Poppins (friendly)",    css: "'Poppins', system-ui, sans-serif",          google: "Poppins:wght@400;600;700" },
+  montserrat:     { label: "Montserrat (bold)",     css: "'Montserrat', system-ui, sans-serif",       google: "Montserrat:wght@400;600;800" },
+  playfair:       { label: "Playfair (elegant)",    css: "'Playfair Display', Georgia, serif",        google: "Playfair+Display:wght@400;700" },
+  lora:           { label: "Lora (literary)",       css: "'Lora', Georgia, serif",                    google: "Lora:wght@400;600" },
+  "dm-serif":     { label: "DM Serif (editorial)",  css: "'DM Serif Display', Georgia, serif",        google: "DM+Serif+Display" },
+  "jetbrains-mono":{ label: "JetBrains Mono (dev)", css: "'JetBrains Mono', ui-monospace, monospace", google: "JetBrains+Mono:wght@400;600" },
+  caveat:         { label: "Caveat (handwritten)",  css: "'Caveat', cursive",                         google: "Caveat:wght@500;700" },
+} as const;
+
+export type FontId = keyof typeof FONTS;
+export const FONT_IDS = Object.keys(FONTS) as [FontId, ...FontId[]];
 
 /** The canonical object every renderer understands. */
 export interface IdentityManifest {

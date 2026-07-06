@@ -6,7 +6,7 @@
  * editing, never for viewing.
  */
 
-import { isFilledUrl, type Block, type IdentityManifest } from "../identity";
+import { FONTS, isFilledUrl, type Block, type IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
 
 export interface ThemePalette {
@@ -19,6 +19,7 @@ export interface ThemePalette {
 
 export const THEMES: Record<string, ThemePalette> = {
   pro:      { bg: "#f3f6f8", card: "#ffffffee", text: "#0f172a", sub: "#475569", accent: "#0e7490" },
+  signal:   { bg: "#0f172a", card: "#1e293bcc", text: "#f8fafc", sub: "#94a3b8", accent: "#60a5fa" },
   midnight: { bg: "#070a12", card: "#11162299", text: "#f8fafc", sub: "#94a3b8", accent: "#22d3ee" },
   terminal: { bg: "#05080a", card: "#0c141066", text: "#e2f9ee", sub: "#6ee7b7", accent: "#34d399" },
   violet:   { bg: "#0b0714", card: "#1a112999", text: "#f5f3ff", sub: "#a78bfa", accent: "#8b5cf6" },
@@ -43,6 +44,22 @@ export function safeUrl(u: unknown): string {
   const s = String(u ?? "");
   if (/^(https?:|mailto:|tel:)/i.test(s)) return s;
   return "#";
+}
+
+/** Google Fonts link for the manifest's curated picks — built from the
+ *  FONTS map only (user input is an enum id, never a string). */
+export function fontAssets(m: IdentityManifest): {
+  link: string;
+  headingCss: string;
+  bodyCss: string;
+} {
+  const heading = FONTS[m.themeCustom?.headingFont ?? "system"];
+  const body = FONTS[m.themeCustom?.bodyFont ?? "system"];
+  const families = [...new Set([heading.google, body.google].filter(Boolean))] as string[];
+  const link = families.length
+    ? `<link rel="preconnect" href="https://fonts.googleapis.com" />\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n<link href="https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}`).join("&")}&display=swap" rel="stylesheet" />`
+    : "";
+  return { link, headingCss: heading.css, bodyCss: body.css };
 }
 
 /** Click-tracked outbound URL: /go/:identityId/:blockId?to=... */
@@ -112,6 +129,7 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
     .sort((a, b) => a.order - b.order)
     .map((b) => renderBlock(b, m, origin))
     .join("\n");
+  const fonts = fontAssets(m);
 
   return `<!doctype html>
 <html lang="en">
@@ -126,14 +144,16 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
 <meta property="og:url" content="${url}" />
 <meta name="twitter:card" content="summary" />
 <link rel="canonical" href="${url}" />
+${fonts.link}
 <style>
   :root { color-scheme: dark light; }
   * { margin: 0; box-sizing: border-box; }
   body {
     background: ${t.bg}; color: ${t.text};
-    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 16px/1.5 ${fonts.bodyCss};
     min-height: 100dvh; display: flex; justify-content: center;
   }
+  h1, .hd { font-family: ${fonts.headingCss}; }
   main { width: 100%; max-width: 560px; padding: 48px 20px 64px; }
   .id { text-align: center; margin-bottom: 28px; }
   .av { width: 88px; height: 88px; border-radius: 50%; object-fit: cover;

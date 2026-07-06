@@ -92,11 +92,9 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
   const addressValid = isItcAddress(address.trim());
 
   return (
-    <div className="bg-ink-900 border border-ink-800 rounded-2xl p-5">
-      <div className="flex items-baseline justify-between">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-fg-subtle">
-          Access
-        </span>
+    <div className="panel p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="section-title">Access</span>
         <span className="text-[11px] text-fg-subtle">
           share by address — like sending to a wallet
         </span>

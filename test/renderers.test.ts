@@ -231,10 +231,39 @@ test("a custom palette overrides the named theme on every surface", async () => 
   assert.ok(card.includes("#ff6600"), "business card follows the custom palette");
 });
 
+test("curated fonts inject Google link and font-family on profile + card", async () => {
+  const custom = {
+    bg: "#112233", card: "#223344", text: "#f0f0f0", sub: "#aabbcc", accent: "#ff6600",
+    headingFont: "playfair" as const, bodyFont: "lora" as const,
+  };
+  const m = fixture({ themeCustom: custom });
+  const html = renderProfileHtml(m, CTX);
+  assert.ok(html.includes("fonts.googleapis.com/css2?family=Playfair+Display"), "Google link built from OUR map");
+  assert.ok(html.includes("family=Lora"), "body family included");
+  assert.ok(html.includes("h1, .hd { font-family: 'Playfair Display', Georgia, serif; }"), "heading font applied");
+  assert.ok(html.includes("'Lora', Georgia, serif"), "body font applied");
+
+  const card = await renderCardHtml(m, CTX);
+  assert.ok(card.includes("Playfair+Display"), "card loads the same fonts");
+
+  // System default: no external font link at all.
+  const plain = renderProfileHtml(fixture(), CTX);
+  assert.equal(plain.includes("fonts.googleapis.com"), false, "no fonts link when system");
+});
+
 // ── Profile page ─────────────────────────────────────────────────────────────
 
 test("profile page escapes content and routes clicks through /go", () => {
   const html = renderProfileHtml(fixture({ bio: '<img onerror=alert(1)>' }), CTX);
   assert.equal(html.includes("<img onerror"), false, "bio escaped");
   assert.ok(html.includes("/go/idn_test1234567890abcdef/blk_1?to="), "click tracking URLs");
+});
+
+test("signal theme — the v3 studio palette is a first-class renderer theme", () => {
+  const html = renderProfileHtml(fixture({ theme: "signal" }), CTX);
+  assert.ok(html.includes("#0f172a"), "charcoal canvas");
+  assert.ok(html.includes("#60a5fa"), "signal blue accent");
+  // Unknown themes still fall back to pro — signal must not break that.
+  const fallback = renderProfileHtml(fixture({ theme: "definitely-not-real" }), CTX);
+  assert.ok(fallback.includes("#0e7490"), "unknown theme falls back to pro accent");
 });

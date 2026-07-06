@@ -80,7 +80,7 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
   }
 
   return (
-    <div className="bg-ink-900 border border-ink-700 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto animate-fade-in">
+    <div className="panel p-6 sm:p-8 max-w-xl mx-auto animate-fade-in">
       <p className="font-mono text-xs uppercase tracking-widest text-accent-soft text-center">
         one profile free, forever
       </p>
@@ -130,7 +130,7 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
                 disabled={busy || (Boolean(custom) && Number(custom) * 100 < status.pwywMinCents)}
                 className="mt-auto pt-3"
               >
-                <span className="block w-full rounded-xl bg-accent text-ink-950 font-bold py-2.5 text-sm hover:brightness-110 transition">
+                <span className="btn btn-primary w-full !py-2.5">
                   {busy ? "Opening checkout…" : "Unlock unlimited"}
                 </span>
               </button>
@@ -171,7 +171,7 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
             onClick={() => void load()}
             className="mt-auto pt-3"
           >
-            <span className="block w-full rounded-xl border border-accent/50 text-accent-soft font-bold py-2.5 text-sm hover:bg-accent/10 transition">
+            <span className="btn btn-accent-ghost w-full !py-2.5">
               Re-check balance
             </span>
           </button>

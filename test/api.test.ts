@@ -173,6 +173,22 @@ test("custom palettes save with hex validation and render publicly", async () =>
   });
   assert.equal(bad.status, 400, "non-hex colors rejected — no CSS injection path");
 
+  const withFonts = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ themeCustom: { ...custom, headingFont: "playfair", bodyFont: "lora" } }),
+  });
+  assert.equal(withFonts.status, 200, "curated fonts accepted");
+  const wf = (await withFonts.json()) as { manifest: { themeCustom?: { headingFont?: string } } };
+  assert.equal(wf.manifest.themeCustom?.headingFont, "playfair");
+
+  const badFont = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ themeCustom: { ...custom, headingFont: "comic-sans-evil@import" } }),
+  });
+  assert.equal(badFont.status, 400, "fonts outside the curated enum rejected");
+
   const clear = await fetch(`${base}/api/identities/${identityId}`, {
     method: "PUT",
     headers: authed(),

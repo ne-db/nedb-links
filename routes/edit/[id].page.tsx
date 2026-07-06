@@ -1,5 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "@interchained/portal-react";
+import {
+  AlignLeft,
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ArrowUpRight,
+  Check,
+  Copy,
+  ExternalLink,
+  Heading2,
+  Link2,
+  Palette,
+  Play,
+  Plus,
+  Share2,
+  ShieldCheck,
+  Trash2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 import { AccessPanel } from "../../src/components/AccessPanel";
 import { Nav } from "../../src/components/Nav";
@@ -7,7 +27,7 @@ import { AccountGate } from "../../src/components/AccountGate";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
-import { newBlockId, type Block, type IdentityManifest } from "../../src/lib/identity";
+import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
 import { THEMES } from "../../src/lib/renderers/html";
 
@@ -23,12 +43,48 @@ interface SaveReceipt {
   head: string;
 }
 
-const inputCls =
-  "w-full bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint";
-const labelCls = "block font-mono text-[10px] uppercase tracking-widest text-fg-subtle mb-1";
+const BLOCK_ICONS: Record<string, LucideIcon> = {
+  link: Link2,
+  header: Heading2,
+  text: AlignLeft,
+  social: Share2,
+  embed: Play,
+};
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+/** A human summary line for a block card header. */
+function blockSummary(b: Block): string {
+  const d = b.data;
+  switch (b.type) {
+    case "link":
+      return str(d.url) || "no url yet";
+    case "header":
+    case "text":
+      return str(d.text).slice(0, 64) || "empty";
+    case "embed":
+      return str(d.url) || "no media yet";
+    case "social": {
+      const links = Array.isArray(d.links) ? d.links.length : 0;
+      return `${links} network${links === 1 ? "" : "s"}`;
+    }
+    default:
+      return b.type;
+  }
+}
+
+function blockTitle(b: Block, fallback: string): string {
+  const d = b.data;
+  switch (b.type) {
+    case "link":
+      return str(d.label) || fallback;
+    case "embed":
+      return str(d.title) || fallback;
+    default:
+      return fallback;
+  }
 }
 
 // ── Per-type block editors (the five built-ins) ──────────────────────────────
@@ -44,45 +100,45 @@ function BlockFields({
   switch (block.type) {
     case "link":
       return (
-        <div className="grid grid-cols-[1fr_2fr_64px] gap-2">
+        <div className="grid sm:grid-cols-[1fr_2fr_72px] gap-3">
           <div>
-            <label className={labelCls}>Label</label>
-            <input className={inputCls} value={str(d.label)} onChange={(e) => onChange({ ...d, label: e.target.value })} />
+            <label className="label">Label</label>
+            <input className="field" value={str(d.label)} onChange={(e) => onChange({ ...d, label: e.target.value })} />
           </div>
           <div>
-            <label className={labelCls}>URL</label>
-            <input className={inputCls} value={str(d.url)} placeholder="https:// · tel: · mailto:" onChange={(e) => onChange({ ...d, url: e.target.value })} />
+            <label className="label">URL</label>
+            <input className="field" value={str(d.url)} placeholder="https:// · tel: · mailto:" onChange={(e) => onChange({ ...d, url: e.target.value })} />
           </div>
           <div>
-            <label className={labelCls}>Icon</label>
-            <input className={inputCls} value={str(d.icon)} onChange={(e) => onChange({ ...d, icon: e.target.value })} />
+            <label className="label">Icon</label>
+            <input className="field" value={str(d.icon)} onChange={(e) => onChange({ ...d, icon: e.target.value })} />
           </div>
         </div>
       );
     case "header":
       return (
         <div>
-          <label className={labelCls}>Heading</label>
-          <input className={inputCls} value={str(d.text)} onChange={(e) => onChange({ ...d, text: e.target.value })} />
+          <label className="label">Heading</label>
+          <input className="field" value={str(d.text)} onChange={(e) => onChange({ ...d, text: e.target.value })} />
         </div>
       );
     case "text":
       return (
         <div>
-          <label className={labelCls}>Text</label>
-          <textarea className={`${inputCls} min-h-[64px]`} value={str(d.text)} onChange={(e) => onChange({ ...d, text: e.target.value })} />
+          <label className="label">Text</label>
+          <textarea className="field min-h-[64px]" value={str(d.text)} onChange={(e) => onChange({ ...d, text: e.target.value })} />
         </div>
       );
     case "embed":
       return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Media URL (YouTube, Spotify…)</label>
-            <input className={inputCls} value={str(d.url)} onChange={(e) => onChange({ ...d, url: e.target.value })} />
+            <label className="label">Media URL (YouTube, Spotify…)</label>
+            <input className="field" value={str(d.url)} onChange={(e) => onChange({ ...d, url: e.target.value })} />
           </div>
           <div>
-            <label className={labelCls}>Title</label>
-            <input className={inputCls} value={str(d.title)} onChange={(e) => onChange({ ...d, title: e.target.value })} />
+            <label className="label">Title</label>
+            <input className="field" value={str(d.title)} onChange={(e) => onChange({ ...d, title: e.target.value })} />
           </div>
         </div>
       );
@@ -93,14 +149,14 @@ function BlockFields({
         <div className="grid gap-2">
           {links.map((l, i) => (
             <div key={i} className="grid grid-cols-[1fr_2fr_36px] gap-2">
-              <input className={inputCls} placeholder="network (instagram…)" value={str(l.network)} onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, network: e.target.value } : x)))} />
-              <input className={inputCls} placeholder="https://…" value={str(l.url)} onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))} />
-              <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className="rounded-lg border border-ink-700 text-fg-muted hover:text-signal-red hover:border-signal-red/50 transition" title="Remove">
-                ✕
+              <input className="field" placeholder="network (instagram…)" value={str(l.network)} onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, network: e.target.value } : x)))} />
+              <input className="field" placeholder="https://…" value={str(l.url)} onChange={(e) => setLinks(links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))} />
+              <button onClick={() => setLinks(links.filter((_, j) => j !== i))} className="icon-btn icon-btn-danger self-center" title="Remove">
+                <X size={15} />
               </button>
             </div>
           ))}
-          <button onClick={() => setLinks([...links, { network: "", url: "https://" }])} className="justify-self-start text-xs font-bold text-accent-soft hover:underline underline-offset-4">
+          <button onClick={() => setLinks([...links, { network: "", url: "https://" }])} className="justify-self-start text-xs font-semibold text-accent-soft hover:underline underline-offset-4">
             + add social link
           </button>
         </div>
@@ -109,6 +165,21 @@ function BlockFields({
     default:
       return <p className="text-xs text-fg-subtle font-mono">unknown block type: {block.type}</p>;
   }
+}
+
+// ── Theme gallery — actual miniature previews, not pills ─────────────────────
+
+function ThemeMini({ palette }: { palette: { bg: string; card: string; text: string; sub: string; accent: string } }): React.ReactElement {
+  return (
+    <div className="h-20 flex flex-col items-center justify-center gap-1.5 px-3" style={{ background: palette.bg }}>
+      <div className="w-6 h-6 rounded-full border-2 shrink-0" style={{ borderColor: palette.accent, background: palette.card }} />
+      <div className="h-1 w-10 rounded-full" style={{ background: palette.text, opacity: 0.85 }} />
+      <div className="w-full max-w-[88px] rounded-md px-2 py-1 flex items-center gap-1.5" style={{ background: palette.card }}>
+        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: palette.accent }} />
+        <div className="h-1 flex-1 rounded-full" style={{ background: palette.sub, opacity: 0.7 }} />
+      </div>
+    </div>
+  );
 }
 
 // ── The editor ────────────────────────────────────────────────────────────────
@@ -257,6 +328,18 @@ export default function EditPage(): React.ReactElement {
     }
   }, [manifest, dirty, save]);
 
+  // ⌘S / Ctrl+S — the studio reflex.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (dirty && busy === null) void save();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [dirty, busy, save]);
+
   if (locked) {
     return (
       <>
@@ -278,118 +361,240 @@ export default function EditPage(): React.ReactElement {
   }
 
   const ordered = [...manifest.blocks].sort((a, b) => a.order - b.order);
+  const published = manifest.status === "published";
 
   return (
     <>
       <Nav />
-      <main className="max-w-7xl mx-auto px-5 py-8">
-        {/* ── Header bar ─────────────────────────────────────────────────── */}
-        <header className="flex flex-wrap items-center gap-3 justify-between">
+
+      {/* ── Studio action bar — sticky, Publish is THE button ───────────── */}
+      <div className="sticky top-14 z-10 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
+        <div className="max-w-7xl mx-auto px-5 py-3 flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/identities" className="text-fg-subtle hover:text-fg-muted transition" title="All identities">
-              ←
+            <Link href="/identities" className="icon-btn shrink-0" title="All identities">
+              <ArrowLeft size={17} />
             </Link>
-            <h1 className="font-display text-2xl font-bold truncate">{manifest.displayName}</h1>
-            <span className="font-mono text-sm text-accent-soft shrink-0">@{manifest.handle}</span>
+            <div className="min-w-0">
+              <h1 className="font-display text-lg font-bold leading-tight truncate">
+                {manifest.displayName}
+              </h1>
+              <p className="font-mono text-[11px] text-accent-soft leading-tight truncate">
+                @{manifest.handle}
+              </p>
+            </div>
             <span
-              className={`text-[11px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 border shrink-0 ${
-                manifest.status === "published"
+              className={`chip shrink-0 ${
+                published
                   ? "text-signal-green border-signal-green/40 bg-signal-green/10"
                   : "text-signal-amber border-signal-amber/40 bg-signal-amber/10"
               }`}
             >
-              {manifest.status}
+              <span className={`w-1.5 h-1.5 rounded-full ${published ? "bg-signal-green" : "bg-signal-amber"} ${dirty ? "animate-pulse" : ""}`} />
+              {published ? "Live" : "Draft"}
               {dirty ? " · unsaved" : ""}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {manifest.status === "published" && (
-              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-ink-700 text-fg-muted text-sm font-semibold px-3.5 py-2 hover:border-accent/50 hover:text-accent-soft transition">
-                View ↗
+            {published && (
+              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !px-3">
+                <ExternalLink size={15} /> View
               </a>
             )}
-            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="rounded-lg border border-accent/50 text-accent-soft text-sm font-bold px-4 py-2 hover:bg-accent/10 transition disabled:opacity-40">
+            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary" title="⌘S">
               {busy === "save" ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => void publish()} disabled={busy !== null} className="rounded-lg bg-accent text-ink-950 text-sm font-bold px-4 py-2 hover:brightness-110 transition disabled:opacity-40">
-              {busy === "publish" ? "Publishing…" : manifest.status === "published" ? "Republish" : "Publish"}
+            <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary">
+              {busy === "publish" ? "Publishing…" : published ? "Republish" : "Publish"}
+              <ArrowUpRight size={15} />
             </button>
           </div>
-        </header>
+        </div>
+      </div>
 
-        {/* Engine receipt — provenance made visible */}
+      <main className="max-w-7xl mx-auto px-5 py-8">
+        {/* Engine receipt — provenance made visible, quietly */}
         {receipt && (
-          <p className="mt-2 font-mono text-[11px] text-fg-subtle">
-            engine receipt: seq {receipt.seq} · head {receipt.head.slice(0, 16)}… — every save is a
+          <p className="mb-4 flex items-center gap-1.5 font-mono text-[11px] text-fg-subtle" title={receipt.head}>
+            <ShieldCheck size={13} className="text-signal-green shrink-0" />
+            engine receipt · seq {receipt.seq} · head {receipt.head.slice(0, 16)}… — every save is a
             hash-chained, causally-linked write
           </p>
         )}
-        {error && <p className="mt-3 text-signal-red font-mono text-sm">{error}</p>}
+        {error && <p className="mb-4 text-signal-red font-mono text-sm">{error}</p>}
 
-        <div className="mt-6 grid lg:grid-cols-[1fr_400px] gap-6 items-start">
-          {/* ── Left: meta + blocks ──────────────────────────────────────── */}
-          <section className="grid gap-5">
-            <div className="bg-ink-900 border border-ink-800 rounded-2xl p-5 grid gap-4">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Display name</label>
-                  <input className={inputCls} value={manifest.displayName} onChange={(e) => patch({ displayName: e.target.value })} />
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_430px] gap-8 items-start">
+          {/* ── Left: the editor ─────────────────────────────────────────── */}
+          <section className="grid gap-8">
+            {/* Profile */}
+            <div>
+              <div className="mb-3 px-1">
+                <h2 className="section-title">Profile</h2>
+                <p className="section-desc">Name, bio, and avatar — the top of your page.</p>
+              </div>
+              <div className="panel p-5 sm:p-6 grid gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Display name</label>
+                    <input className="field" value={manifest.displayName} onChange={(e) => patch({ displayName: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="label">Avatar URL</label>
+                    <input className="field" value={manifest.avatar ?? ""} placeholder="https://…" onChange={(e) => patch({ avatar: e.target.value || undefined })} />
+                  </div>
                 </div>
                 <div>
-                  <label className={labelCls}>Avatar URL</label>
-                  <input className={inputCls} value={manifest.avatar ?? ""} placeholder="https://…" onChange={(e) => patch({ avatar: e.target.value || undefined })} />
+                  <label className="label">Bio</label>
+                  <textarea className="field min-h-[56px]" value={manifest.bio ?? ""} onChange={(e) => patch({ bio: e.target.value || undefined })} />
                 </div>
               </div>
-              <div>
-                <label className={labelCls}>Bio</label>
-                <textarea className={`${inputCls} min-h-[56px]`} value={manifest.bio ?? ""} onChange={(e) => patch({ bio: e.target.value || undefined })} />
+            </div>
+
+            {/* Blocks — each one an elevated card */}
+            <div>
+              <div className="mb-3 px-1">
+                <h2 className="section-title">Blocks</h2>
+                <p className="section-desc">Links, headers, embeds — the body of your page, in order.</p>
               </div>
-              <div>
-                <div className="flex items-baseline justify-between">
-                  <label className={labelCls}>Theme</label>
+              <div className="grid gap-3">
+                {ordered.map((b, i) => {
+                  const def = blockDefs.find((x) => x.type === b.type);
+                  const Icon = BLOCK_ICONS[b.type] ?? Link2;
+                  return (
+                    <div key={b.id} className="panel p-4 sm:p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="w-8 h-8 rounded-[10px] bg-accent/10 text-accent-soft inline-flex items-center justify-center shrink-0">
+                          <Icon size={16} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate">{blockTitle(b, def?.name ?? b.type)}</p>
+                          <p className="text-xs text-fg-subtle truncate">{blockSummary(b)}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button onClick={() => move(i, -1)} disabled={i === 0} className="icon-btn" title="Move up">
+                            <ArrowUp size={15} />
+                          </button>
+                          <button onClick={() => move(i, 1)} disabled={i === ordered.length - 1} className="icon-btn" title="Move down">
+                            <ArrowDown size={15} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const clone: Block = { ...b, id: newBlockId(), data: JSON.parse(JSON.stringify(b.data)) as Record<string, unknown> };
+                              const next = [...ordered];
+                              next.splice(i + 1, 0, clone);
+                              setBlocks(next);
+                            }}
+                            className="icon-btn"
+                            title="Duplicate"
+                          >
+                            <Copy size={15} />
+                          </button>
+                          <button onClick={() => setBlocks(ordered.filter((x) => x.id !== b.id))} className="icon-btn icon-btn-danger" title="Remove block">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                      <BlockFields block={b} onChange={(data) => setBlocks(ordered.map((x) => (x.id === b.id ? { ...x, data } : x)))} />
+                    </div>
+                  );
+                })}
+
+                {/* Add block */}
+                <div className="relative">
                   <button
-                    onClick={() => {
-                      if (manifest.themeCustom) {
-                        patch({ themeCustom: undefined });
-                      } else {
-                        const base = THEMES[manifest.theme ?? "pro"] ?? THEMES.pro;
-                        patch({
-                          themeCustom: {
-                            bg: base.bg.slice(0, 7),
-                            card: base.card.slice(0, 7),
-                            text: base.text.slice(0, 7),
-                            sub: base.sub.slice(0, 7),
-                            accent: base.accent.slice(0, 7),
-                          },
-                        });
-                      }
-                    }}
-                    className={`font-mono text-[10px] uppercase tracking-widest transition ${
-                      manifest.themeCustom
-                        ? "text-signal-amber hover:text-signal-red"
-                        : "text-accent-soft hover:underline underline-offset-4"
-                    }`}
+                    onClick={() => setAddOpen((v) => !v)}
+                    className="w-full rounded-2xl border border-dashed border-ink-700 text-fg-muted font-semibold text-sm py-4 hover:border-accent/50 hover:text-accent-soft transition inline-flex items-center justify-center gap-2"
                   >
-                    {manifest.themeCustom ? "✕ reset to theme" : "✦ customize colors"}
+                    <Plus size={16} /> Add block
                   </button>
+                  {addOpen && (
+                    <div className="absolute z-10 mt-2 w-full panel p-2 grid gap-1 shadow-card-hover">
+                      {blockDefs.map((def) => {
+                        const Icon = BLOCK_ICONS[def.type] ?? Link2;
+                        return (
+                          <button
+                            key={def.type}
+                            onClick={() => {
+                              setBlocks([...ordered, { id: newBlockId(), type: def.type, order: ordered.length, data: def.defaults() }]);
+                              setAddOpen(false);
+                            }}
+                            className="flex items-center gap-3 text-left rounded-xl px-3.5 py-2.5 hover:bg-ink-850 transition"
+                          >
+                            <span className="w-8 h-8 rounded-[10px] bg-accent/10 text-accent-soft inline-flex items-center justify-center shrink-0">
+                              <Icon size={16} />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block font-semibold text-sm">{def.name}</span>
+                              <span className="block text-xs text-fg-subtle truncate">{def.description}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                {!manifest.themeCustom ? (
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(THEMES).map(([key, t]) => (
+              </div>
+            </div>
+
+            {/* Theme — a gallery, not pills */}
+            <div>
+              <div className="mb-3 px-1 flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="section-title">Theme</h2>
+                  <p className="section-desc">How your public page looks. The preview is the real renderer.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (manifest.themeCustom) {
+                      patch({ themeCustom: undefined });
+                    } else {
+                      const base = THEMES[manifest.theme ?? "pro"] ?? THEMES.pro;
+                      patch({
+                        themeCustom: {
+                          bg: base.bg.slice(0, 7),
+                          card: base.card.slice(0, 7),
+                          text: base.text.slice(0, 7),
+                          sub: base.sub.slice(0, 7),
+                          accent: base.accent.slice(0, 7),
+                        },
+                      });
+                    }
+                  }}
+                  className={`btn !py-1.5 !px-3 text-xs shrink-0 ${manifest.themeCustom ? "btn-secondary" : "btn-accent-ghost"}`}
+                >
+                  {manifest.themeCustom ? (
+                    <>
+                      <X size={13} /> Reset to theme
+                    </>
+                  ) : (
+                    <>
+                      <Palette size={13} /> Customize
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {!manifest.themeCustom ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {Object.entries(THEMES).map(([key, t]) => {
+                    const selected = (manifest.theme ?? "pro") === key;
+                    return (
                       <button
                         key={key}
                         onClick={() => patch({ theme: key })}
+                        className={`panel panel-lift overflow-hidden text-left ${selected ? "ring-2 ring-accent border-accent/40" : ""}`}
                         title={key}
-                        className={`h-9 px-3 rounded-lg border text-xs font-bold transition ${
-                          (manifest.theme ?? "pro") === key ? "border-accent text-accent-soft" : "border-ink-700 text-fg-muted hover:border-ink-700"
-                        }`}
-                        style={{ background: t.bg }}
                       >
-                        <span style={{ color: t.accent }}>●</span> {key}
+                        <ThemeMini palette={t} />
+                        <span className="px-3 py-2 flex items-center justify-between">
+                          <span className="text-xs font-semibold capitalize">{key}</span>
+                          {selected && <Check size={14} className="text-accent-soft shrink-0" />}
+                        </span>
                       </button>
-                    ))}
-                  </div>
-                ) : (
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="panel p-5 grid gap-4">
                   <div className="grid grid-cols-5 gap-2">
                     {([
                       ["bg", "page"],
@@ -410,93 +615,85 @@ export default function EditPage(): React.ReactElement {
                               },
                             })
                           }
-                          className="h-10 w-full rounded-lg border border-ink-700 bg-ink-850 cursor-pointer"
+                          className="h-10 w-full rounded-xl border border-ink-700 bg-ink-850 cursor-pointer"
                           title={label}
                         />
-                        <span className="mt-1 block font-mono text-[9px] uppercase tracking-widest text-fg-subtle">
+                        <span className="mt-1.5 block text-[10px] font-medium text-fg-subtle">
                           {label}
                         </span>
                       </div>
                     ))}
-                    <p className="col-span-5 text-[11px] text-fg-subtle">
-                      Your page, your colors — the preview is the real renderer, so what
-                      you see is exactly what visitors get.
-                    </p>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Blocks */}
-            <div className="grid gap-3">
-              {ordered.map((b, i) => {
-                const def = blockDefs.find((x) => x.type === b.type);
-                return (
-                  <div key={b.id} className="bg-ink-900 border border-ink-800 rounded-2xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-fg-subtle">
-                        {def?.name ?? b.type}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => move(i, -1)} disabled={i === 0} className="w-7 h-7 rounded-lg border border-ink-700 text-fg-muted hover:text-accent-soft hover:border-accent/50 transition disabled:opacity-30" title="Move up">
-                          ↑
-                        </button>
-                        <button onClick={() => move(i, 1)} disabled={i === ordered.length - 1} className="w-7 h-7 rounded-lg border border-ink-700 text-fg-muted hover:text-accent-soft hover:border-accent/50 transition disabled:opacity-30" title="Move down">
-                          ↓
-                        </button>
-                        <button onClick={() => setBlocks(ordered.filter((x) => x.id !== b.id))} className="w-7 h-7 rounded-lg border border-ink-700 text-fg-muted hover:text-signal-red hover:border-signal-red/50 transition" title="Remove block">
-                          ✕
-                        </button>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {([
+                      ["headingFont", "Heading font"],
+                      ["bodyFont", "Body font"],
+                    ] as const).map(([key, label]) => (
+                      <div key={key}>
+                        <label className="label">{label}</label>
+                        <select
+                          value={manifest.themeCustom?.[key] ?? "system"}
+                          onChange={(e) =>
+                            patch({
+                              themeCustom: {
+                                ...(manifest.themeCustom as NonNullable<typeof manifest.themeCustom>),
+                                [key]: e.target.value as FontId,
+                              },
+                            })
+                          }
+                          className="field"
+                        >
+                          {Object.entries(FONTS).map(([id, f]) => (
+                            <option key={id} value={id}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
-                    <BlockFields block={b} onChange={(data) => setBlocks(ordered.map((x) => (x.id === b.id ? { ...x, data } : x)))} />
-                  </div>
-                );
-              })}
-
-              {/* Add block */}
-              <div className="relative">
-                <button onClick={() => setAddOpen((v) => !v)} className="w-full rounded-2xl border border-dashed border-ink-700 text-fg-muted font-semibold py-3.5 hover:border-accent/50 hover:text-accent-soft transition">
-                  + Add block
-                </button>
-                {addOpen && (
-                  <div className="absolute z-10 mt-2 w-full bg-ink-900 border border-ink-700 rounded-2xl p-2 grid gap-1 shadow-glow">
-                    {blockDefs.map((def) => (
-                      <button
-                        key={def.type}
-                        onClick={() => {
-                          setBlocks([...ordered, { id: newBlockId(), type: def.type, order: ordered.length, data: def.defaults() }]);
-                          setAddOpen(false);
-                        }}
-                        className="text-left rounded-xl px-3.5 py-2.5 hover:bg-ink-850 transition"
-                      >
-                        <span className="font-bold text-sm">{def.name}</span>
-                        <span className="block text-xs text-fg-subtle">{def.description}</span>
-                      </button>
                     ))}
                   </div>
-                )}
-              </div>
+                  <p className="text-[11px] text-fg-subtle">
+                    Your page, your colors, your type — the preview is the real
+                    renderer, so what you see is exactly what visitors get.
+                  </p>
+                </div>
+              )}
             </div>
 
             <AccessPanel identityId={manifest.identityId} />
           </section>
 
-          {/* ── Right: live preview via the REAL renderer ────────────────── */}
-          <aside className="lg:sticky lg:top-20">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-fg-subtle">
-                Live preview — rendered by the exact public renderer
-              </span>
+          {/* ── Right: the hero — a floating device, always alive ─────────── */}
+          <aside className="lg:sticky lg:top-32">
+            <div className="device max-w-[390px] mx-auto">
+              <div className="device-notch" />
+              <div className="device-screen">
+                <iframe title="Live preview" sandbox="" srcDoc={previewHtml} className="h-[620px]" />
+              </div>
             </div>
-            <div className="bg-ink-900 border border-ink-800 rounded-[28px] p-2 shadow-glow">
-              <iframe
-                title="Live preview"
-                sandbox=""
-                srcDoc={previewHtml}
-                className="w-full h-[640px] rounded-[22px] bg-ink-950"
-              />
-            </div>
+            <p className="mt-4 text-center text-[11px] text-fg-subtle">
+              Live preview — rendered by the exact renderer your visitors get.
+            </p>
+            {published && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {([
+                  ["Page", `/${manifest.handle}`],
+                  ["Card", `/${manifest.handle}?format=card`],
+                  ["QR", `/${manifest.handle}?format=qr`],
+                  ["vCard", `/${manifest.handle}?format=vcard`],
+                ] as const).map(([label, href]) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chip text-fg-muted hover:text-accent-soft hover:border-accent/40 transition"
+                  >
+                    {label} <ArrowUpRight size={11} />
+                  </a>
+                ))}
+              </div>
+            )}
           </aside>
         </div>
       </main>

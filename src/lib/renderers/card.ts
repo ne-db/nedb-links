@@ -17,7 +17,7 @@
 
 import type { IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
-import { esc, THEMES } from "./html";
+import { esc, fontAssets, THEMES } from "./html";
 import { buildQrSvg, shareUrl } from "./qr";
 
 export async function renderCardHtml(
@@ -31,6 +31,7 @@ export async function renderCardHtml(
     dark: "#0f172a",
     light: "#ffffff",
   });
+  const fonts = fontAssets(m);
   const title = `${esc(m.displayName)} — business card`;
   const initial = esc(m.displayName.slice(0, 1).toUpperCase());
   const avatar = m.avatar && /^https?:\/\//i.test(m.avatar)
@@ -54,13 +55,14 @@ export async function renderCardHtml(
 <meta property="og:description" content="${esc(m.bio ?? `@${m.handle}`)}" />
 <meta property="og:url" content="${esc(profileUrl)}/card" />
 <meta name="robots" content="noindex" />
+${fonts.link}
 <style>
   * { margin: 0; box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     background: ${t.bg};
     color: ${t.text};
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 15px/1.45 ${fonts.bodyCss};
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 22px; padding: 24px;
@@ -93,7 +95,7 @@ export async function renderCardHtml(
   .avf { display: flex; align-items: center; justify-content: center;
          font-weight: 800; font-size: clamp(18px, 4vw, 24px);
          color: ${t.accent}; background: ${t.bg}; }
-  h1 { font-size: clamp(18px, 4.6vw, 26px); font-weight: 800;
+  h1 { font-family: ${fonts.headingCss}; font-size: clamp(18px, 4.6vw, 26px); font-weight: 800;
        letter-spacing: -0.02em; margin-top: 10px;
        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hn { color: ${t.accent}; font-weight: 700; font-size: clamp(12px, 3vw, 14px); }

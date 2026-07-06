@@ -116,11 +116,9 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
     }
   }, [phrase]);
 
-  const card = "bg-ink-900 border border-ink-700 rounded-2xl p-6 sm:p-8";
-  const primaryBtn =
-    "w-full rounded-xl bg-accent text-ink-950 font-bold py-3.5 transition hover:brightness-110 disabled:opacity-40";
-  const ghostBtn =
-    "w-full rounded-xl border border-accent/50 text-accent-soft font-bold py-3 transition hover:bg-accent/10";
+  const card = "panel p-6 sm:p-8";
+  const primaryBtn = "btn btn-primary w-full !py-3.5";
+  const ghostBtn = "btn btn-accent-ghost w-full !py-3";
   const backBtn = "mt-3 w-full text-sm text-fg-subtle hover:text-fg-muted transition";
 
   if (step === "welcome") {

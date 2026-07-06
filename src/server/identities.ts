@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import {
   COLLECTIONS,
+  FONT_IDS,
   HEX_COLOR_RE,
   isValidHandle,
   newIdentityId,
@@ -47,7 +48,15 @@ const manifestPatchSchema = z.object({
   avatar: z.string().max(200_000).optional(),
   theme: z.string().max(40).optional(),
   themeCustom: z
-    .object({ bg: hexColor, card: hexColor, text: hexColor, sub: hexColor, accent: hexColor })
+    .object({
+      bg: hexColor,
+      card: hexColor,
+      text: hexColor,
+      sub: hexColor,
+      accent: hexColor,
+      headingFont: z.enum(FONT_IDS).optional(),
+      bodyFont: z.enum(FONT_IDS).optional(),
+    })
     .nullish(),
   blocks: z.array(blockSchema).max(200).optional(),
 });

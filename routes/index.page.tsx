@@ -89,35 +89,23 @@ function ShareKit({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <a
-          href={`/${handle}`}
-          className="rounded-xl bg-accent text-ink-950 font-bold py-3 text-center hover:brightness-110 transition"
-        >
+        <a href={`/${handle}`} className="btn btn-primary !py-3">
           View profile
         </a>
-        <a
-          href={`/${handle}?format=card`}
-          className="rounded-xl border border-accent/50 text-accent-soft font-bold py-3 text-center hover:bg-accent/10 transition"
-        >
+        <a href={`/${handle}?format=card`} className="btn btn-accent-ghost !py-3">
           Business card
         </a>
-        <a
-          href={`/${handle}?format=vcard`}
-          className="rounded-xl border border-ink-700 text-fg-muted font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
-        >
+        <a href={`/${handle}?format=vcard`} className="btn btn-secondary !py-3">
           Save contact (.vcf)
         </a>
-        <a
-          href={`/${handle}?format=json`}
-          className="rounded-xl border border-ink-700 text-fg-muted font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
-        >
+        <a href={`/${handle}?format=json`} className="btn btn-secondary !py-3">
           JSON surface
         </a>
       </div>
 
       <a
         href={`/edit/${encodeURIComponent(identityId)}`}
-        className="mt-3 block w-full rounded-xl border border-ink-700 text-fg-muted font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+        className="btn btn-secondary mt-3 w-full !py-3"
       >
         ✎ Edit page
       </a>
@@ -261,10 +249,10 @@ export default function ClaimPage(): React.ReactElement {
           everywhere — profile page, business card, QR code, vCard.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2 text-[11px] font-mono uppercase tracking-wider">
-          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">no email required</span>
-          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">every edit versioned</span>
-          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">tamper-evident</span>
-          <span className="rounded-full border border-ink-700 bg-ink-900 px-3 py-1 text-fg-subtle">yours to self-host</span>
+          <span className="chip bg-ink-900 text-fg-subtle">no email required</span>
+          <span className="chip bg-ink-900 text-fg-subtle">every edit versioned</span>
+          <span className="chip bg-ink-900 text-fg-subtle">tamper-evident</span>
+          <span className="chip bg-ink-900 text-fg-subtle">yours to self-host</span>
         </div>
       </header>
 
@@ -283,38 +271,32 @@ export default function ClaimPage(): React.ReactElement {
           <UpgradeCard onUnlocked={() => setNeedsUpgrade(false)} />
         </div>
       ) : (
-      <section className="w-full max-w-xl mt-12 bg-ink-900 border border-ink-700 rounded-2xl p-6 sm:p-8 shadow-glow animate-fade-in">
+      <section className="w-full max-w-xl mt-12 panel p-6 sm:p-8 shadow-glow animate-fade-in">
         {!claimed ? (
           <>
-            <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted">
-              Claim your handle
-            </label>
-            <div className="mt-2 flex items-center gap-2 bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 focus-within:border-accent/60">
+            <label className="label">Claim your handle</label>
+            <div className="field field-lg flex items-center gap-2 focus-within:!border-accent">
               <span className="text-fg-subtle font-mono">links/</span>
               <input
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
                 placeholder="marisayvettehair"
                 autoFocus
-                className="flex-1 bg-transparent outline-none font-mono text-lg text-fg placeholder:text-fg-faint"
+                className="flex-1 bg-transparent outline-none font-mono text-lg text-fg placeholder:text-fg-faint min-w-0"
               />
               {badge[availability]}
             </div>
 
-            <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted mt-6">
-              Display name
-            </label>
+            <label className="label mt-6">Display name</label>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Marisa Yvette"
-              className="mt-2 w-full bg-ink-850 border border-ink-700 rounded-xl px-4 py-3 outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint"
+              className="field field-lg"
             />
 
-            <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted mt-6">
-              Who are you?
-            </label>
-            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <label className="label mt-6">Who are you?</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {templates.map((t) => (
                 <button
                   key={t.id}
@@ -323,7 +305,7 @@ export default function ClaimPage(): React.ReactElement {
                   className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
                     template === t.id
                       ? "border-accent bg-accent/10 text-accent-soft"
-                      : "border-ink-700 bg-ink-850 text-fg-muted hover:border-ink-700 hover:bg-ink-800"
+                      : "border-ink-700 bg-ink-850 text-fg-muted hover:bg-ink-800"
                   }`}
                 >
                   {t.name}
@@ -334,7 +316,7 @@ export default function ClaimPage(): React.ReactElement {
             <button
               onClick={claim}
               disabled={busy || availability !== "available"}
-              className="mt-8 w-full rounded-xl bg-accent text-ink-950 font-bold py-3.5 text-lg transition hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn btn-primary mt-8 w-full !py-3.5 !text-lg"
             >
               {busy ? "Claiming…" : "Claim it"}
             </button>
@@ -353,14 +335,14 @@ export default function ClaimPage(): React.ReactElement {
                 </p>
                 <a
                   href={`/edit/${encodeURIComponent(claimed.identityId)}`}
-                  className="mt-6 block w-full rounded-xl bg-accent text-ink-950 font-bold py-3.5 text-lg text-center transition hover:brightness-110"
+                  className="btn btn-primary mt-6 w-full !py-3.5 !text-lg"
                 >
                   Edit your draft →
                 </a>
                 <button
                   onClick={publish}
                   disabled={busy}
-                  className="mt-3 w-full rounded-xl border border-accent/50 text-accent-soft font-bold py-3 transition hover:bg-accent/10 disabled:opacity-40"
+                  className="btn btn-accent-ghost mt-3 w-full !py-3"
                 >
                   {busy ? "Publishing…" : "Publish as-is"}
                 </button>

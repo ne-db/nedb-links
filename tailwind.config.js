@@ -8,9 +8,16 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans:    ["Inter", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        // Per-theme via CSS vars: pro/native = Space Grotesk display,
+        // v3 "signal" = Inter Tight display. Fallbacks live in the vars.
+        sans:    ["var(--font-body)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Inter", "system-ui", "sans-serif"],
         mono:    ["JetBrains Mono", "ui-monospace", "monospace"],
+      },
+      borderRadius: {
+        // Cards flex per theme (16px pro/native, 18px v3); controls 12px.
+        "2xl": "var(--radius-card, 1rem)",
+        xl:    "var(--radius-ctl, 0.75rem)",
       },
       colors: {
         // Surfaces + borders — both themes share these utilities;
@@ -44,7 +51,9 @@ export default {
       boxShadow: {
         glow:     "0 0 0 1px rgb(var(--accent) / 0.18), 0 8px 40px -12px rgb(var(--accent) / var(--glow-alpha))",
         "glow-lg": "0 0 0 1px rgb(var(--accent) / 0.22), 0 20px 60px -15px rgb(var(--accent) / var(--glow-alpha))",
-        card:     "0 1px 2px rgb(15 23 42 / 0.06), 0 4px 16px -8px rgb(15 23 42 / 0.10)",
+        card:     "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+        pop:      "var(--shadow-pop)",
       },
       animation: {
         "fade-in":  "fade-in 0.4s ease both",

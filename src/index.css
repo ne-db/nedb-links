@@ -3,17 +3,18 @@
 @tailwind utilities;
 
 /*
- * NEDB Links — dual theme. LinkedIn for web3:
+ * NEDB Links — three app themes, one DOM.
  *
- *   pro    (default) — light, airy, professional-network trust. For the
- *                      salon owner, the consultant, the normie. Cyan
- *                      deepened for daylight: distinctly Interchained,
- *                      deliberately not LinkedIn's blue.
- *   native           — the sovereign dark: ink canvas, electric cyan.
- *                      For the crypto crowd. One toggle away.
+ *   pro    (default) — light, airy, professional-network trust. Teal
+ *                      Interchained accent, flat surfaces, quiet borders.
+ *   native           — the sovereign dark: ink canvas, electric cyan glow.
+ *   v3 "signal"      — the publishing studio. Editorial light: #F7F8FA
+ *                      canvas, white elevated cards, one strong blue,
+ *                      Inter Tight display, soft labels, layered depth.
  *
- * Everything reads CSS variables; components use semantic tokens
- * (ink scale, fg scale, accent) and restyle with zero code changes.
+ * Everything reads CSS variables. Components use semantic tokens (ink
+ * scale, fg scale, accent) plus the component classes below — so a theme
+ * changes look AND feel (radius, shadow, type, labels) with zero JSX forks.
  */
 
 :root,
@@ -39,6 +40,17 @@
   --accent-glow: 6 182 212;   /* cyan-500 */
 
   --glow-alpha: 0.10;
+
+  /* feel — pro stays flat and bordered */
+  --radius-card: 1rem;
+  --radius-ctl: 0.75rem;
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-card-hover: 0 1px 2px rgb(15 23 42 / 0.05), 0 8px 24px -12px rgb(15 23 42 / 0.10);
+  --shadow-pop: 0 20px 50px -12px rgb(15 23 42 / 0.18);
+  --ring-focus: 0 0 0 3px rgb(var(--accent) / 0.12);
+  --field-border: 203 213 225;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
 }
 
 [data-theme="native"] {
@@ -60,14 +72,295 @@
   --accent-glow: 6 182 212;
 
   --glow-alpha: 0.45;
+
+  /* feel — native keeps its neon-edge identity */
+  --radius-card: 1rem;
+  --radius-ctl: 0.75rem;
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-card-hover: 0 0 0 1px rgb(var(--accent) / 0.18), 0 12px 40px -12px rgb(var(--accent) / var(--glow-alpha));
+  --shadow-pop: 0 0 0 1px rgb(var(--accent) / 0.22), 0 24px 70px -18px rgb(var(--accent) / var(--glow-alpha));
+  --ring-focus: 0 0 0 3px rgb(var(--accent) / 0.18);
+  --field-border: 39 48 66;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+/*
+ * v3 — Signal. Calm, precise, editorial. Less dashboard, more
+ * publishing software: white cards float on #F7F8FA, one strong blue,
+ * Inter Tight headings, soft sentence-case labels, layered shadows.
+ */
+[data-theme="v3"] {
+  color-scheme: light;
+
+  --ink-950: 247 248 250;   /* #f7f8fa app canvas */
+  --ink-900: 255 255 255;   /* elevated white card */
+  --ink-850: 248 250 252;   /* #f8fafc secondary surface / fields */
+  --ink-800: 229 231 235;   /* #e5e7eb card border */
+  --ink-700: 203 213 225;   /* #cbd5e1 strong border (secondary buttons) */
+
+  --fg: 17 24 39;           /* #111827 */
+  --fg-muted: 107 114 128;  /* #6b7280 */
+  --fg-subtle: 148 163 184; /* #94a3b8 muted labels */
+  --fg-faint: 203 213 225;
+
+  /* one strong blue */
+  --accent: 37 99 235;      /* #2563eb */
+  --accent-soft: 29 78 216; /* #1d4ed8 — hover / link text */
+  --accent-glow: 96 165 250;/* #60a5fa */
+
+  --glow-alpha: 0;
+
+  /* feel — elevation instead of outlines */
+  --radius-card: 18px;
+  --radius-ctl: 12px;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(15 23 42 / 0.05), 0 12px 32px rgb(15 23 42 / 0.10);
+  --shadow-pop: 0 24px 60px rgb(15 23 42 / 0.15);
+  --ring-focus: 0 0 0 4px rgb(37 99 235 / 0.12);
+  --field-border: 226 232 240; /* #e2e8f0 */
+  --font-display: "Inter Tight", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
 }
 
 html,
 body {
   @apply bg-ink-950 text-fg antialiased;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 ::selection {
   background: rgb(var(--accent) / 0.25);
+}
+
+/* Theme switch — 250ms crossfade, applied only during the flip. */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease !important;
+}
+
+@layer components {
+  /*
+   * The surface language. One markup, three feels:
+   * pro/native read as bordered panels; v3 reads as floating cards.
+   */
+  .panel {
+    background-color: rgb(var(--ink-900));
+    border: 1px solid rgb(var(--ink-800));
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  }
+  .panel-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Fields — soft inset surfaces, accent focus ring. */
+  .field {
+    width: 100%;
+    background-color: rgb(var(--ink-850));
+    border: 1px solid rgb(var(--field-border));
+    border-radius: var(--radius-ctl);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: rgb(var(--fg));
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .field::placeholder {
+    color: rgb(var(--fg-faint));
+  }
+  .field:focus {
+    border-color: rgb(var(--accent));
+    box-shadow: var(--ring-focus);
+    background-color: rgb(var(--ink-900));
+  }
+  .field-lg {
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+  }
+
+  /* Labels — mono-caps in pro/native; soft Inter Medium in v3. */
+  .label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgb(var(--fg-subtle));
+  }
+  [data-theme="v3"] .label {
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: rgb(var(--fg-muted));
+  }
+
+  /* Section headers — soft everywhere: title + quiet description. */
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: rgb(var(--fg));
+  }
+  .section-desc {
+    font-size: 12.5px;
+    color: rgb(var(--fg-subtle));
+    margin-top: 1px;
+  }
+
+  /* Brand kicker — the mono voice, kept for brand moments only. */
+  .kicker {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(var(--accent-soft));
+  }
+
+  /* Buttons — primary filled, secondary surfaced, ghost quiet. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-ctl);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.625rem 1rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+      color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease,
+      filter 0.15s ease;
+    user-select: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background-color: rgb(var(--accent));
+    color: rgb(var(--ink-950));
+    box-shadow: 0 1px 2px rgb(var(--accent) / 0.35);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: rgb(var(--accent-soft));
+  }
+  [data-theme="native"] .btn-primary:hover:not(:disabled) {
+    /* native's soft accent is lighter, not darker — brighten instead */
+    background-color: rgb(var(--accent));
+    filter: brightness(1.12);
+  }
+  .btn-secondary {
+    background-color: rgb(var(--ink-900));
+    border: 1px solid rgb(var(--ink-700));
+    color: rgb(var(--fg));
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: rgb(var(--ink-850));
+    border-color: rgb(var(--fg-faint));
+  }
+  .btn-ghost {
+    color: rgb(var(--fg-muted));
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: rgb(var(--fg));
+    background-color: rgb(var(--ink-850));
+  }
+  .btn-accent-ghost {
+    border: 1px solid rgb(var(--accent) / 0.5);
+    color: rgb(var(--accent-soft));
+  }
+  .btn-accent-ghost:hover:not(:disabled) {
+    background-color: rgb(var(--accent) / 0.1);
+  }
+
+  /* Icon buttons — quiet 32px squares for card controls. */
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 10px;
+    color: rgb(var(--fg-subtle));
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+  .icon-btn:hover:not(:disabled) {
+    color: rgb(var(--fg));
+    background-color: rgb(var(--ink-850));
+  }
+  .icon-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .icon-btn-danger:hover:not(:disabled) {
+    color: #dc2626;
+    background-color: rgb(220 38 38 / 0.08);
+  }
+
+  /* Status chip */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--ink-800));
+    padding: 0.25rem 0.625rem;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /*
+   * The floating device — the preview is the hero. Glass frame,
+   * dark bezel, deep soft shadow (per-theme via --shadow-pop).
+   */
+  .device {
+    position: relative;
+    border-radius: 44px;
+    padding: 10px;
+    background: linear-gradient(165deg, rgb(var(--ink-900)), rgb(var(--ink-850)));
+    border: 1px solid rgb(var(--ink-800));
+    box-shadow: var(--shadow-pop);
+  }
+  .device-screen {
+    position: relative;
+    border-radius: 34px;
+    background: #0b0f19;
+    padding: 7px;
+    overflow: hidden;
+  }
+  .device-screen iframe {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: 27px;
+    background: #0b0f19;
+  }
+  .device-notch {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 88px;
+    height: 18px;
+    border-radius: 999px;
+    background: #0b0f19;
+    z-index: 2;
+    pointer-events: none;
+  }
 }
