@@ -17,17 +17,39 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, watchFile, unwatchFile } from "node:fs";
-import { resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 
 const ENV_PATH = resolve(process.cwd(), ".env");
+
+/**
+ * Resolve tsx's JS entry and run it with THIS node binary. Spawning
+ * "npx" breaks on Windows (npx is npx.cmd — spawn ENOENT without a
+ * shell); an absolute node path + a .mjs file path works on every
+ * platform with zero shell involvement.
+ */
+const require = createRequire(import.meta.url);
+const tsxPkgPath = require.resolve("tsx/package.json");
+const tsxPkg = require("tsx/package.json");
+const tsxBinRel = typeof tsxPkg.bin === "string" ? tsxPkg.bin : tsxPkg.bin.tsx;
+const TSX = resolve(dirname(tsxPkgPath), tsxBinRel);
+
 let child = null;
 let restarting = false;
 let shuttingDown = false;
 
 function start() {
-  child = spawn("npx", ["tsx", "watch", "server.ts"], {
+  child = spawn(process.execPath, [TSX, "watch", "server.ts"], {
     stdio: "inherit",
     env: process.env,
+  });
+  // spawn failures emit 'error', not 'exit' — without this handler the
+  // wrapper itself dies with an unhandled 'error' event (seen live on
+  // Windows as the npx ENOENT crash).
+  child.on("error", (err) => {
+    if (shuttingDown) return;
+    console.error(`[api] failed to start (${err.message}) — retrying in 2s`);
+    setTimeout(start, 2000);
   });
   child.on("exit", (code, signal) => {
     if (shuttingDown) return;
