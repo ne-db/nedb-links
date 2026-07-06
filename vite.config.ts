@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
   // Express server, exactly like production. Without this, published
   // profiles 404 into the SPA during `npm run dev` (found live by Mark:
   // "View" showed the not-claimed page for a claimed handle).
-  const SPA_PREFIXES = ["/identities", "/edit", "/analytics", "/verify", "/reset", "/src", "/node_modules", "/assets"];
+  const SPA_PREFIXES = ["/identities", "/edit", "/analytics", "/verify", "/reset", "/magic", "/src", "/node_modules", "/assets"];
   function servedByVite(url: string): boolean {
     const path = url.split("?")[0];
     if (path === "/" || path === "/index.html") return true;

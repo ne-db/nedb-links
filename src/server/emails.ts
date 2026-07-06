@@ -356,3 +356,56 @@ export function receiptEmail(opts: {
     ].join("\n"),
   };
 }
+
+// ── 6 · Magic sign-in — the link for this device, the code for another ──────
+
+export function magicLoginEmail(opts: {
+  to: string;
+  loginUrl: string;
+  code: string;
+}): OutgoingMail {
+  const digits = opts.code
+    .split("")
+    .map(
+      (d) =>
+        `<td style="width:44px;height:54px;border:1px solid ${BORDER};border-radius:10px;font-family:${FONT};font-size:26px;font-weight:700;color:${INK};text-align:center;">${esc(d)}</td>`,
+    )
+    .join(`<td style="width:8px;"></td>`);
+  const html = shell({
+    preheader: "Tap to sign in, or use the code. Expires in 15 minutes.",
+    kicker: "sign in",
+    content: [
+      heading("Your sign-in link"),
+      paragraph(
+        "Tap the button on this device — or, if you're signing in somewhere else, type the code instead. Both work once and expire in 15 minutes.",
+        { center: true, muted: true },
+      ),
+      button("Sign me in", opts.loginUrl),
+      fallbackUrl(opts.loginUrl),
+      divider(),
+      paragraph("Signing in on another device? Enter this code:", { center: true, muted: true }),
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:6px auto 2px;"><tr>${digits}</tr></table>`,
+      divider(),
+      paragraph(
+        "Didn't ask to sign in? Ignore this email — nothing happens without the link or the code, and your password is untouched.",
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: `You're receiving this because a sign-in link was requested for this address at ${esc(BRAND)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: `Your sign-in link — ${BRAND}`,
+    html,
+    text: [
+      `${BRAND_UP} — SIGN IN`,
+      "",
+      `Sign in: ${opts.loginUrl}`,
+      "",
+      `Or enter this code on the sign-in screen: ${opts.code}`,
+      "",
+      "Both work once and expire in 15 minutes.",
+      "Didn't ask? Ignore this email — your password is untouched.",
+    ].join("\n"),
+  };
+}

@@ -272,3 +272,48 @@ test("the email landing routes are reserved — never claimable as handles", asy
     assert.equal(j.available, false, `'${h}' is not claimable`);
   }
 });
+
+test("magic sign-in: one email, redeemable by code OR link, single-use, no enumeration", async () => {
+  // Unknown email: 200, silence.
+  const n0 = outbox.length;
+  const ghost = await post("/api/auth/magic", { email: "ghost@example.com" });
+  assert.equal(ghost.status, 200);
+  assert.equal(outbox.length, n0, "no mail for unknown accounts");
+
+  // Real account: the email carries a /magic link AND a 6-digit code.
+  const n = outbox.length;
+  const r = await post("/api/auth/magic", { email: EMAIL });
+  assert.equal(r.status, 200);
+  assert.equal(outbox.length, n + 1, "magic mail sent");
+  const mail = outbox[n];
+  assert.match(mail.subject, /Your sign-in link/);
+  const link = mail.text.match(/\/magic\?token=(tok_[a-f0-9]+)/);
+  assert.ok(link, "mail carries the link token");
+  const codeMatch = mail.text.match(/code on the sign-in screen: (\d{6})/);
+  assert.ok(codeMatch, "mail carries the 6-digit code");
+
+  // Wrong code: 401 without burning the token.
+  const bad = await post("/api/auth/magic-redeem", { email: EMAIL, code: "000000" });
+  assert.equal(bad.status, 401, "wrong code bounces");
+
+  // Redeem by CODE → session works.
+  const byCode = await post("/api/auth/magic-redeem", { email: EMAIL, code: codeMatch![1] });
+  assert.equal(byCode.status, 200, "code signs in");
+  const sj = (await byCode.json()) as { token: string; email: string };
+  assert.equal(sj.email, EMAIL);
+  const me = await fetch(`${base}/api/identities`, {
+    headers: { authorization: `Bearer ${sj.token}` },
+  });
+  assert.equal(me.status, 200, "magic session is a real session");
+
+  // Single-use: the link token died with the code redemption.
+  const byLink = await post("/api/auth/magic-redeem", { token: link![1] });
+  assert.equal(byLink.status, 401, "one redemption burns both paths");
+
+  // Fresh request → redeem by LINK this time.
+  const n2 = outbox.length;
+  await post("/api/auth/magic", { email: EMAIL });
+  const link2 = outbox[n2].text.match(/\/magic\?token=(tok_[a-f0-9]+)/);
+  const byLink2 = await post("/api/auth/magic-redeem", { token: link2![1] });
+  assert.equal(byLink2.status, 200, "link signs in");
+});

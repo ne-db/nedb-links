@@ -38,6 +38,7 @@ import {
 import { buildQrPng, shareUrl } from "../lib/renderers/qr";
 import { sha256Hex } from "../lib/wallet";
 import {
+  magicLoginEmail,
   publishedEmail,
   receiptEmail,
   resetEmail,
@@ -328,6 +329,120 @@ accountsEmail.post("/resend-verify", wrap(async (req, res) => {
     }
   }
   res.json({ ok: true });
+}));
+
+// ── Magic sign-in: one email, two redemptions (link OR code) ────────────────
+
+const MAGIC_TTL_MS = 15 * 60 * 1000;
+const magicWindows = new Map<string, number[]>();
+
+function magicThrottleOk(principal: string, now = Date.now()): boolean {
+  const hits = (magicWindows.get(principal) ?? []).filter((t) => now - t < 10 * 60 * 1000);
+  if (hits.length >= 5) {
+    magicWindows.set(principal, hits);
+    return false;
+  }
+  hits.push(now);
+  magicWindows.set(principal, hits);
+  return true;
+}
+
+interface MagicToken {
+  kind: "magic_login";
+  principal: string;
+  email: string;
+  /** Unguessable link token (the URL carries this, not the doc id). */
+  linkToken: string;
+  /** Six digits for cross-device sign-in. */
+  code: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+function magicId(principal: string): string {
+  return `magic_${principal}`;
+}
+
+/** POST /magic {email} — ALWAYS 200; mints and mails for verified
+ *  accounts only. Re-requesting replaces the previous token. */
+accountsEmail.post("/magic", wrap(async (req, res) => {
+  const body = z.object({ email: z.string().trim().toLowerCase().email().max(254) }).safeParse(req.body);
+  if (body.success) {
+    const principal = emailPrincipal(body.data.email);
+    const account = await getAccount(principal);
+    if (account?.verifiedAt && magicThrottleOk(principal)) {
+      const now = Date.now();
+      const doc: MagicToken = {
+        kind: "magic_login",
+        principal,
+        email: account.email,
+        linkToken: `tok_${randomBytes(16).toString("hex")}`,
+        code: String(Math.floor(100000 + Math.random() * 900000)),
+        createdAt: new Date(now).toISOString(),
+        expiresAt: new Date(now + MAGIC_TTL_MS).toISOString(),
+      };
+      await db.put(COLLECTIONS.challenges, magicId(principal), doc as unknown as Record<string, unknown>, {
+        evidence: `magic login for ${principal}`,
+      });
+      sendMail(
+        magicLoginEmail({
+          to: account.email,
+          loginUrl: `${origin()}/magic?token=${doc.linkToken}`,
+          code: doc.code,
+        }),
+      ).catch((err) =>
+        console.error(`[links] magic email failed: ${err instanceof Error ? err.message : err}`),
+      );
+    }
+  }
+  res.json({ ok: true });
+}));
+
+async function redeemMagic(doc: MagicToken | null): Promise<{ token: string; expiresAt: string } | null> {
+  if (!doc || doc.kind !== "magic_login") return null;
+  if (new Date(doc.expiresAt).getTime() < Date.now()) return null;
+  // Single-use: tombstone before issuing.
+  await db.delete(COLLECTIONS.challenges, magicId(doc.principal));
+  return issueSession(doc.principal);
+}
+
+/** POST /magic-redeem — {token} from the emailed link, OR {email, code}
+ *  typed on another device. One endpoint, two shapes, one tombstone. */
+accountsEmail.post("/magic-redeem", wrap(async (req, res) => {
+  const body = z
+    .object({
+      token: z.string().min(8).max(80).optional(),
+      email: z.string().trim().toLowerCase().email().max(254).optional(),
+      code: z.string().regex(/^\d{6}$/).optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "invalid request" });
+    return;
+  }
+
+  let doc: MagicToken | null = null;
+  if (body.data.token) {
+    const rows = await db.query(
+      `FROM ${COLLECTIONS.challenges} WHERE linkToken = '${body.data.token.replace(/[^a-z0-9_]/gi, "")}' LIMIT 1`,
+    );
+    doc = (rows[0] as unknown as MagicToken | undefined) ?? null;
+  } else if (body.data.email && body.data.code) {
+    const principal = emailPrincipal(body.data.email);
+    const found = (await db.get(COLLECTIONS.challenges, magicId(principal))) as MagicToken | null;
+    if (found) {
+      const a = Buffer.from(String(found.code));
+      const b = Buffer.from(body.data.code);
+      if (a.length === b.length && timingSafeEqual(a, b)) doc = found;
+    }
+  }
+
+  const session = await redeemMagic(doc);
+  if (!session || !doc) {
+    res.status(401).json({ error: "that sign-in link or code is invalid or expired — request a new one" });
+    return;
+  }
+  res.json({ token: session.token, address: doc.principal, email: doc.email, expiresAt: session.expiresAt });
 }));
 
 /** POST /logout — same contract as wallet mode. */

@@ -9,7 +9,7 @@ import { setSession } from "../lib/api";
  * no addresses, no crypto vocabulary — that's the other product.
  */
 
-type Step = "signin" | "signup" | "checkInbox" | "forgot" | "forgotSent";
+type Step = "signin" | "signup" | "checkInbox" | "forgot" | "forgotSent" | "magicSent";
 
 interface SessionResponse {
   token: string;
@@ -100,6 +100,41 @@ export function EmailGate({ onReady }: { onReady: () => void }): React.ReactElem
     }
   }, [email, post]);
 
+  const [code, setCode] = useState("");
+
+  const requestMagic = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await post("/api/auth/magic", { email: email.trim() });
+      setCode("");
+      setStep("magicSent");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "request failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [email, post]);
+
+  const redeemCode = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await post("/api/auth/magic-redeem", { email: email.trim(), code: code.trim() });
+      const j = (await r.json().catch(() => ({}))) as Partial<SessionResponse> & { error?: string };
+      if (!r.ok || !j.token) {
+        setError(j.error ?? "that code didn't work");
+        return;
+      }
+      setSession(j.token, j.address ?? "", j.email ?? email.trim());
+      onReady();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "sign-in failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [email, code, post, onReady]);
+
   const resend = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -137,6 +172,46 @@ export function EmailGate({ onReady }: { onReady: () => void }): React.ReactElem
           {busy ? "Sending…" : "Resend the email"}
         </button>
         <button onClick={() => { setStep("signin"); setError(null); setNotice(null); }} className={`${linkBtn} block mx-auto mt-4`}>
+          ← Back to sign in
+        </button>
+      </div>
+    );
+  }
+
+  // ── Magic link sent — tap the email, or type the code here ─────────────────
+  if (step === "magicSent") {
+    return (
+      <div className={card}>
+        <p className="kicker text-center">check your inbox</p>
+        <h2 className="font-display text-2xl font-bold mt-2 text-center">Your link is on its way</h2>
+        <p className="text-fg-muted text-sm text-center mt-3">
+          Tap the button in the email we sent to
+          <br />
+          <b className="text-fg">{email.trim()}</b>
+        </p>
+        <p className="text-fg-subtle text-xs text-center mt-4">
+          On another device? Type the 6-digit code from the email:
+        </p>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          placeholder="••••••"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          className="field mt-2 text-center !text-2xl tracking-[0.5em] font-mono"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && code.length === 6 && !busy) void redeemCode();
+          }}
+        />
+        {error && <p className="mt-3 text-signal-red text-xs text-center">{error}</p>}
+        <button
+          onClick={() => void redeemCode()}
+          disabled={busy || code.length !== 6}
+          className={`${primaryBtn} mt-4`}
+        >
+          {busy ? "Signing in…" : "Sign in with code"}
+        </button>
+        <button onClick={() => { setStep("signin"); setError(null); }} className={`${linkBtn} block mx-auto mt-4`}>
           ← Back to sign in
         </button>
       </div>
@@ -243,6 +318,17 @@ export function EmailGate({ onReady }: { onReady: () => void }): React.ReactElem
       >
         {busy ? (signup ? "Creating…" : "Signing in…") : signup ? "Create account" : "Sign in"}
       </button>
+
+      {!signup && (
+        <button
+          onClick={() => void requestMagic()}
+          disabled={busy || !emailValid}
+          className="btn btn-secondary w-full !py-2.5 mt-2"
+          title={emailValid ? "We'll email you a one-tap sign-in link and a code" : "Enter your email first"}
+        >
+          ✨ Email me a sign-in link instead
+        </button>
+      )}
 
       <p className="text-fg-subtle text-xs text-center mt-5">
         {signup ? (
