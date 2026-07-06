@@ -17,6 +17,7 @@ export interface AppConfig {
   defaultTheme: string;
   fiatDoor: boolean;
   limitEnabled: boolean;
+  uploads: boolean;
 }
 
 let appConfig: AppConfig | null = null;
@@ -31,7 +32,7 @@ export function getAppConfig(): Promise<AppConfig> {
       appConfigPromise = null;
       // Unreachable server: assume wallet (the default product) so the
       // UI still renders; the gate's own requests will surface errors.
-      return { authMode: "wallet" as const, brandName: "NEDB Links", defaultTheme: "pro", fiatDoor: false, limitEnabled: false };
+      return { authMode: "wallet" as const, brandName: "NEDB Links", defaultTheme: "pro", fiatDoor: false, limitEnabled: false, uploads: false };
     });
   return appConfigPromise;
 }

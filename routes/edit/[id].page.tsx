@@ -11,6 +11,7 @@ import {
   Copy,
   ExternalLink,
   Heading2,
+  ImagePlus,
   Link2,
   Palette,
   Play,
@@ -30,6 +31,8 @@ import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
+import { normalizeAndUpload } from "../../src/lib/uploadImage";
+import { useAppConfig } from "../../src/lib/useAppConfig";
 import { THEMES } from "../../src/lib/renderers/html";
 
 export const intent = {
@@ -187,6 +190,10 @@ function ThemeMini({ palette }: { palette: { bg: string; card: string; text: str
 
 export default function EditPage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
+  const cfg = useAppConfig();
+  const uploadsOn = Boolean(cfg?.uploads);
+  const fileInput = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [manifest, setManifest] = useState<IdentityManifest | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"save" | "publish" | null>(null);
@@ -262,6 +269,23 @@ export default function EditPage(): React.ReactElement {
   const setBlocks = useCallback(
     (blocks: Block[]) => {
       patch({ blocks: blocks.map((b, i) => ({ ...b, order: i })) });
+    },
+    [patch],
+  );
+
+  /** Logo/avatar upload: normalize in-browser, host via the server. */
+  const doUpload = useCallback(
+    async (file: File) => {
+      setUploading(true);
+      setError(null);
+      try {
+        const url = await normalizeAndUpload(file);
+        patch({ avatar: url });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "upload failed");
+      } finally {
+        setUploading(false);
+      }
     },
     [patch],
   );
@@ -450,8 +474,41 @@ export default function EditPage(): React.ReactElement {
                     <input className="field" value={manifest.displayName} onChange={(e) => patch({ displayName: e.target.value })} />
                   </div>
                   <div>
-                    <label className="label">Avatar URL</label>
-                    <input className="field" value={manifest.avatar ?? ""} placeholder="https://…" onChange={(e) => patch({ avatar: e.target.value || undefined })} />
+                    <label className="label">Avatar / logo</label>
+                    <div className="flex items-center gap-2">
+                      {manifest.avatar && /^https?:\/\//i.test(manifest.avatar) && (
+                        <img
+                          src={manifest.avatar}
+                          alt=""
+                          className="w-9 h-9 rounded-full object-cover border border-ink-700 shrink-0"
+                        />
+                      )}
+                      <input className="field" value={manifest.avatar ?? ""} placeholder="https://… or upload →" onChange={(e) => patch({ avatar: e.target.value || undefined })} />
+                      {uploadsOn && (
+                        <>
+                          <input
+                            ref={fileInput}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              e.target.value = "";
+                              if (f) void doUpload(f);
+                            }}
+                          />
+                          <button
+                            onClick={() => fileInput.current?.click()}
+                            disabled={uploading}
+                            className="btn btn-secondary !py-2 !px-3 shrink-0"
+                            title="Upload an image — resized & hosted automatically"
+                          >
+                            <ImagePlus size={15} className={uploading ? "animate-pulse" : ""} />
+                            {uploading ? "Uploading…" : "Upload"}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div>

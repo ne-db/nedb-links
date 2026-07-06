@@ -22,6 +22,7 @@ import { grants } from "./grants";
 import { handles, identities } from "./identities";
 import { preview } from "./preview";
 import { render } from "./render";
+import { uploads } from "./uploads";
 
 export function createApp(): Express {
   const app = express();
@@ -74,6 +75,7 @@ export function createApp(): Express {
       defaultTheme: config.defaultTheme,
       fiatDoor: Boolean(config.stripeSecretKey),
       limitEnabled: config.limitEnabled,
+      uploads: Boolean(config.imgbbKey) || process.env.LINKS_UPLOAD_TEST === "1",
     });
   });
 
@@ -87,6 +89,7 @@ export function createApp(): Express {
   app.use("/api/identities/:id/grants", grants);
   app.use("/api/identities", identities);
   app.use("/api/preview", preview);
+  app.use("/api/upload", uploads);
 
   // ── Editor SPA (production build) ─────────────────────────────────────────
   const dist = resolve(process.cwd(), "dist");

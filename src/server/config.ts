@@ -30,6 +30,8 @@ export interface LinksConfig {
   smtpPass?: string;
   /** RFC 5322 From — e.g. "NEDB Links <no-reply@ne-db.com>". */
   mailFrom?: string;
+  /** imgbb API key — enables avatar/logo uploads. Absent = URL-only. */
+  imgbbKey?: string;
   /** Running nedbd instance. All state lives there. */
   nedbUrl: string;
   /** Database name inside nedbd. */
@@ -81,6 +83,7 @@ export function loadConfig(): LinksConfig {
     smtpUser: process.env.SMTP_USER || undefined,
     smtpPass: process.env.SMTP_PASS || undefined,
     mailFrom: process.env.MAIL_FROM || undefined,
+    imgbbKey: process.env.IMGBB_API_KEY || undefined,
     nedbUrl: process.env.NEDB_URL || "http://127.0.0.1:7070",
     nedbDb: process.env.NEDB_DB || "links",
     nedbToken: process.env.NEDB_TOKEN || undefined,
