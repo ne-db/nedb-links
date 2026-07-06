@@ -16,6 +16,20 @@ import { adminHeaders } from "./api";
 
 const MAX_EDGE = 512;
 
+/** POST a ready blob to /api/upload → hosted URL. */
+export async function uploadImageBlob(blob: Blob): Promise<string> {
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    headers: { "content-type": blob.type || "image/webp", ...adminHeaders() },
+    body: blob,
+  });
+  const j = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+  if (!res.ok || !j.url) {
+    throw new Error(j.error ?? "upload failed");
+  }
+  return j.url;
+}
+
 export async function normalizeAndUpload(file: File): Promise<string> {
   const bmp = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(
     () => createImageBitmap(file),
@@ -40,16 +54,7 @@ export async function normalizeAndUpload(file: File): Promise<string> {
       ),
     );
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      headers: { "content-type": blob.type || "image/webp", ...adminHeaders() },
-      body: blob,
-    });
-    const j = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-    if (!res.ok || !j.url) {
-      throw new Error(j.error ?? "upload failed");
-    }
-    return j.url;
+    return await uploadImageBlob(blob);
   } finally {
     bmp.close?.();
   }

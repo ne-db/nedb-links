@@ -31,7 +31,7 @@ import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
-import { normalizeAndUpload } from "../../src/lib/uploadImage";
+import { LogoStudio } from "../../src/components/LogoStudio";
 import { useAppConfig } from "../../src/lib/useAppConfig";
 import { THEMES } from "../../src/lib/renderers/html";
 
@@ -269,7 +269,8 @@ export default function EditPage(): React.ReactElement {
   const cfg = useAppConfig();
   const uploadsOn = Boolean(cfg?.uploads);
   const fileInput = useRef<HTMLInputElement | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [studioFile, setStudioFile] = useState<File | null>(null);
+  const uploading = studioFile !== null;
   const [manifest, setManifest] = useState<IdentityManifest | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"save" | "publish" | null>(null);
@@ -349,22 +350,12 @@ export default function EditPage(): React.ReactElement {
     [patch],
   );
 
-  /** Logo/avatar upload: normalize in-browser, host via the server. */
-  const doUpload = useCallback(
-    async (file: File) => {
-      setUploading(true);
-      setError(null);
-      try {
-        const url = await normalizeAndUpload(file);
-        patch({ avatar: url });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "upload failed");
-      } finally {
-        setUploading(false);
-      }
-    },
-    [patch],
-  );
+  /** Logo/avatar upload: picking a file opens the studio — position,
+   *  zoom, backdrop — then bakes and uploads. */
+  const doUpload = useCallback((file: File) => {
+    setError(null);
+    setStudioFile(file);
+  }, []);
 
   const move = useCallback(
     (index: number, delta: -1 | 1) => {
@@ -522,6 +513,17 @@ export default function EditPage(): React.ReactElement {
           </>
         }
       />
+
+      {studioFile && (
+        <LogoStudio
+          file={studioFile}
+          onDone={(url) => {
+            patch({ avatar: url });
+            setStudioFile(null);
+          }}
+          onClose={() => setStudioFile(null)}
+        />
+      )}
 
       <main className="max-w-7xl mx-auto px-5 py-8">
         {/* Engine receipt — provenance made visible, quietly */}
