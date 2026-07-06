@@ -93,6 +93,82 @@ function blockTitle(b: Block, fallback: string): string {
 
 // ── Per-type block editors (the five built-ins) ──────────────────────────────
 
+/**
+ * The icon picker — tap, don't type. Curated glyphs + emoji that render
+ * everywhere the icon travels: the zero-JS public page, the printed
+ * business card, vCards. (Line-icon SVGs on public pages would need
+ * server-side path inlining — a deliberate later, not a default.)
+ * Every glyph the built-in templates seed is included, so seeded
+ * blocks show as selected. Stored as the same plain string — zero
+ * schema change, zero migration.
+ */
+const ICON_SET = [
+  "▶", "◆", "★", "♥", "✂", "☰", "◷", "➤", "✎", "▤", "◉", "♫", "♪", "☏", "✋", "⌥", "◈", "⬡",
+  "🔗", "🌐", "📍", "📅", "🛒", "🛍️", "💈", "💅", "💇", "📸", "🎥", "🎵", "🎤", "🎨",
+  "✨", "🔥", "💼", "📖", "☕", "🍔", "🍕", "🧁", "🏋️", "🧘", "🐾", "🎁", "💳", "📞", "✉️", "⭐",
+  "👑", "🌸", "🌿", "💎", "🚀", "🏠", "🗓️", "🎓",
+];
+
+function IconPicker({
+  value,
+  onPick,
+}: {
+  value: string;
+  onPick: (icon: string) => void;
+}): React.ReactElement {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="field !w-full text-center text-base leading-none !py-2"
+        title={value ? `Icon: ${value} — tap to change` : "Pick an icon"}
+      >
+        {value || <span className="text-fg-faint text-sm">＋</span>}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-72 panel p-3 shadow-card-hover">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold">Pick an icon</span>
+            <button
+              onClick={() => {
+                onPick("");
+                setOpen(false);
+              }}
+              className="text-[11px] text-fg-subtle hover:text-signal-red transition"
+            >
+              none
+            </button>
+          </div>
+          <div className="grid grid-cols-8 gap-1">
+            {ICON_SET.map((g) => (
+              <button
+                key={g}
+                onClick={() => {
+                  onPick(g);
+                  setOpen(false);
+                }}
+                className={`h-8 rounded-lg text-base leading-none transition hover:bg-ink-850 ${
+                  value === g ? "ring-2 ring-accent bg-accent/10" : ""
+                }`}
+                title={g}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+          <input
+            value={value}
+            onChange={(e) => onPick(e.target.value.slice(0, 4))}
+            placeholder="or type your own"
+            className="field mt-2 !py-1.5 text-center text-sm"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BlockFields({
   block,
   onChange,
@@ -115,7 +191,7 @@ function BlockFields({
           </div>
           <div>
             <label className="label">Icon</label>
-            <input className="field" value={str(d.icon)} onChange={(e) => onChange({ ...d, icon: e.target.value })} />
+            <IconPicker value={str(d.icon)} onPick={(icon) => onChange({ ...d, icon })} />
           </div>
         </div>
       );
