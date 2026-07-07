@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
 import { Nav } from "../src/components/Nav";
+import { Footer } from "../src/components/Footer";
 import { Gate } from "../src/components/Gate";
 import { UpgradeCard } from "../src/components/UpgradeCard";
 import { adminHeaders } from "../src/lib/api";
@@ -335,6 +336,11 @@ export default function ClaimPage(): React.ReactElement {
           <span className="chip bg-ink-900 text-fg-subtle">tamper-evident</span>
           <span className="chip bg-ink-900 text-fg-subtle">yours to self-host</span>
         </div>
+        {/* Discover leads; claiming is the working section right below.
+            Server route — hard link, not SPA. */}
+        <a href="/discover" className="btn btn-primary !py-3 !px-7 !text-base mt-7 inline-flex">
+          Discover people →
+        </a>
       </header>
 
       {locked ? (
@@ -465,6 +471,7 @@ export default function ClaimPage(): React.ReactElement {
         </p>
       </footer>
     </main>
+    <Footer />
     </>
   );
 }

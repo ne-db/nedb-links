@@ -352,6 +352,53 @@ test("clicks redirect and analytics aggregate in the engine", async () => {
   assert.ok(Number(kinds.vcard_download) >= 1, "vcard_download recorded");
 });
 
+test("discover: opt-in only, safe projection, page + JSON agree", async () => {
+  // smoketest is published by now — but NOT discoverable. The directory
+  // must be empty of it: publishing is never consent.
+  const before = (await (await fetch(`${base}/api/discover`)).json()) as { entries: Array<{ handle: string }> };
+  assert.equal(before.entries.some((e) => e.handle === "smoketest"), false, "published ≠ listed");
+
+  // Flip the consent switch.
+  const put = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ discoverable: true }),
+  });
+  assert.equal(put.status, 200);
+
+  const after = (await (await fetch(`${base}/api/discover`)).json()) as {
+    entries: Array<Record<string, unknown>>;
+  };
+  const entry = after.entries.find((e) => e.handle === "smoketest");
+  assert.ok(entry, "opted-in identity is listed");
+  assert.equal("owner" in entry, false, "owner/principal never leaves the API");
+
+  // The zero-JS page renders it, cards feed source analytics.
+  const html = await (await fetch(`${base}/discover`)).text();
+  assert.ok(html.includes("@smoketest"), "directory page lists the profile");
+  assert.ok(html.includes("?src=discover"), "click-through tagged as a discover source");
+
+  // Search narrows; a miss says so.
+  const miss = await (await fetch(`${base}/discover?q=zzznope`)).text();
+  assert.equal(miss.includes("@smoketest"), false);
+  assert.ok(miss.includes("No profiles match"));
+
+  // The handle itself is forever unclaimable.
+  const avail = (await (await fetch(`${base}/api/handles/discover/availability`)).json()) as {
+    available?: boolean; reason?: string;
+  };
+  assert.equal(avail.available, false, "'discover' is reserved");
+
+  // Withdraw consent — gone again.
+  await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ discoverable: false }),
+  });
+  const gone = (await (await fetch(`${base}/api/discover`)).json()) as { entries: Array<{ handle: string }> };
+  assert.equal(gone.entries.some((e) => e.handle === "smoketest"), false, "delisting is instant");
+});
+
 test("the engine verifies the whole database tamper-evident", async () => {
   const report = await db.verify();
   assert.equal(report.ok, true, "verify ok");

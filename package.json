@@ -16,7 +16,7 @@
     "audit": "portal audit",
     "guard": "portal guard",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/renderers.test.ts test/wallet.test.ts test/electrum.test.ts test/theme.test.ts test/aggregate.test.ts test/config.test.ts test/logolayout.test.ts test/background.test.ts test/dragreorder.test.ts test/markdown.test.ts",
+    "test": "tsx --test test/renderers.test.ts test/wallet.test.ts test/electrum.test.ts test/theme.test.ts test/aggregate.test.ts test/config.test.ts test/logolayout.test.ts test/background.test.ts test/dragreorder.test.ts test/markdown.test.ts test/directory.test.ts",
     "test:api": "tsx --test test/api.test.ts test/auth.test.ts test/seedauth.test.ts test/billing.test.ts test/webhook.test.ts test/analytics.test.ts test/emailauth.test.ts test/uploads.test.ts"
   },
   "dependencies": {

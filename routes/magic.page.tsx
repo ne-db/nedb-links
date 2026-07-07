@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 import { Nav } from "../src/components/Nav";
+import { Footer } from "../src/components/Footer";
 import { setSession } from "../src/lib/api";
 
 export const intent = {
@@ -94,6 +95,7 @@ export default function MagicPage(): React.ReactElement {
           )}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

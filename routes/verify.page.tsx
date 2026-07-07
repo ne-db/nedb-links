@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { Nav } from "../src/components/Nav";
+import { Footer } from "../src/components/Footer";
 import { setSession } from "../src/lib/api";
 
 export const intent = {
@@ -132,6 +133,7 @@ export default function VerifyPage(): React.ReactElement {
           )}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

@@ -3,7 +3,7 @@ import { Link } from "@interchained/portal-react";
 
 import { clearSession, getAddress, getEmail, getToken } from "../lib/api";
 import { useAppConfig } from "../lib/useAppConfig";
-import { applyTheme, getStoredTheme, getTheme, isThemeName, nextTheme, THEME_LABELS, toggleTheme, type ThemeName } from "../lib/theme";
+import { applyTheme, getStoredTheme, getTheme, isThemeName } from "../lib/theme";
 
 /** itc1qxy2k…x0wlh — inline (keeps wallet crypto out of the nav bundle). */
 function shortAddr(addr: string): string {
@@ -33,12 +33,10 @@ export function Nav({
   const brand = cfg?.brandName ?? "NEDB Links";
   const [address, setAddress] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-  const [theme, setTheme] = useState<ThemeName>("pro");
 
   useEffect(() => {
     setAddress(getAddress());
     setEmail(getEmail());
-    setTheme(getTheme());
   }, []);
 
   // Dev parity: prod injects the deployment default pre-paint; in dev
@@ -49,7 +47,6 @@ export function Nav({
     if (getStoredTheme()) return;
     if (isThemeName(cfg.defaultTheme) && cfg.defaultTheme !== getTheme()) {
       applyTheme(cfg.defaultTheme);
-      setTheme(cfg.defaultTheme);
       try {
         localStorage.removeItem("links-theme"); // applyTheme stored it; a default is not a choice
       } catch { /* fine */ }
@@ -68,12 +65,21 @@ export function Nav({
             <span className={context ? "hidden lg:inline" : ""}> {brand}</span>
           </Link>
           {!context && (
-            <Link
-              href="/identities"
-              className="hidden sm:inline text-sm font-medium text-fg-muted hover:text-fg transition"
-            >
-              Identities
-            </Link>
+            <>
+              <Link
+                href="/identities"
+                className="hidden sm:inline text-sm font-medium text-fg-muted hover:text-fg transition"
+              >
+                Identities
+              </Link>
+              {/* Server route, not SPA — a hard link is correct. */}
+              <a
+                href="/discover"
+                className="hidden sm:inline text-sm font-medium text-fg-muted hover:text-fg transition"
+              >
+                Discover
+              </a>
+            </>
           )}
           {context && (
             <>
@@ -88,13 +94,6 @@ export function Nav({
               Claim
             </Link>
           )}
-          <button
-            onClick={() => setTheme(toggleTheme())}
-            className="chip font-mono text-[10px] uppercase tracking-widest text-fg-subtle hover:text-accent-soft hover:border-accent/40 transition"
-            title={`Theme: ${theme} — click for ${nextTheme(theme)}`}
-          >
-            {THEME_LABELS[theme]}
-          </button>
           {address && (
             <div className="hidden md:flex items-center gap-2">
               <span

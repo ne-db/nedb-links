@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 
 import { Nav } from "../src/components/Nav";
+import { Footer } from "../src/components/Footer";
 import { setSession } from "../src/lib/api";
 
 export const intent = {
@@ -125,6 +126,7 @@ export default function ResetPage(): React.ReactElement {
           )}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

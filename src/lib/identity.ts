@@ -117,6 +117,9 @@ export interface IdentityManifest {
   /** Page background — chrome OVER the theme (canvas only; cards,
    *  accents, and type stay theme-driven). Absent = theme's own bg. */
   background?: BackgroundConfig;
+  /** Opt-IN listing in the public Discover directory. Publishing a page
+   *  is not consent to being indexed — this flag is. Absent = false. */
+  discoverable?: boolean;
   /** Ordered blocks — the body of the identity. */
   blocks: Block[];
   /** Aggregate capabilities advertised by this identity's blocks. */
@@ -159,7 +162,7 @@ export const RESERVED_HANDLES = new Set([
   "api", "go", "edit", "new", "claim", "admin", "app", "assets", "static",
   "health", "docs", "about", "settings", "login", "logout", "favicon",
   "robots", "sitemap", "index", "links", "nedb", "analytics", "identities",
-  "verify", "reset", "magic",
+  "verify", "reset", "magic", "discover", "discovery",
 ]);
 
 /** Handles are lowercase, 2-40 chars, alphanumeric plus inner hyphens. */

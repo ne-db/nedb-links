@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
 
 import { Nav } from "../src/components/Nav";
+import { Footer } from "../src/components/Footer";
 import { Gate } from "../src/components/Gate";
 import { ApiError, getJson } from "../src/lib/api";
 
@@ -152,6 +153,7 @@ export default function IdentitiesPage(): React.ReactElement {
           ))}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

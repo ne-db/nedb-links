@@ -62,6 +62,8 @@ const manifestPatchSchema = z.object({
     .nullish(),
   // Hex-validated stops + enum direction only — user strings never reach CSS.
   background: backgroundSchema.nullish(),
+  // Opt-in Discover listing — a boolean, owner-controlled, never implied.
+  discoverable: z.boolean().optional(),
   blocks: z.array(blockSchema).max(200).optional(),
 });
 

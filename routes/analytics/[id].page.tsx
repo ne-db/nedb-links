@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Nav } from "../../src/components/Nav";
+import { Footer } from "../../src/components/Footer";
 import { Gate } from "../../src/components/Gate";
 import { ApiError, getJson } from "../../src/lib/api";
 
@@ -263,6 +264,7 @@ export default function AnalyticsPage(): React.ReactElement {
           <span className="font-mono"> as of {new Date(data.asOf).toLocaleTimeString()}</span>
         </p>
       </main>
+      <Footer />
     </>
   );
 }

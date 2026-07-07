@@ -21,6 +21,7 @@ import { db } from "./db";
 import { grants } from "./grants";
 import { handles, identities } from "./identities";
 import { preview } from "./preview";
+import { discover } from "./discover";
 import { render } from "./render";
 import { uploads } from "./uploads";
 
@@ -117,6 +118,8 @@ export function createApp(): Express {
   }
 
   // ── Public identity surfaces (/:handle, /go/*) ────────────────────────────
+  // Discover mounts BEFORE /:handle so the directory wins the route.
+  app.use(discover);
   app.use(render);
 
   // ── SPA fallback ──────────────────────────────────────────────────────────

@@ -28,6 +28,7 @@ import { AccessPanel } from "../../src/components/AccessPanel";
 import { BackgroundPicker } from "../../src/components/BackgroundPicker";
 import { Nav } from "../../src/components/Nav";
 import { Gate } from "../../src/components/Gate";
+import { Footer } from "../../src/components/Footer";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
@@ -612,6 +613,7 @@ export default function EditPage(): React.ReactElement {
           theme: manifest.theme,
           themeCustom: manifest.themeCustom ?? null,
           background: manifest.background ?? null,
+          discoverable: manifest.discoverable ?? false,
           blocks: manifest.blocks,
         },
       );
@@ -1069,6 +1071,29 @@ export default function EditPage(): React.ReactElement {
               onHover={setBgHover}
             />
 
+            {/* Discover — opt-IN listing. Publishing is not consent; this is. */}
+            <div>
+              <div className="mb-3 px-1">
+                <h2 className="section-title">Discover</h2>
+                <p className="section-desc">The public directory — be found, on purpose.</p>
+              </div>
+              <label className="panel p-5 flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={manifest.discoverable === true}
+                  onChange={(e) => patch({ discoverable: e.target.checked })}
+                  className="accent-[rgb(var(--accent))] w-4 h-4 mt-0.5 shrink-0"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Listed in Discover</span>
+                  <span className="block text-xs text-fg-muted mt-0.5">
+                    Show this page in the public directory once it's published.
+                    Publishing alone never lists you — this switch is the consent.
+                  </span>
+                </span>
+              </label>
+            </div>
+
             <AccessPanel identityId={manifest.identityId} />
           </section>
 
@@ -1106,6 +1131,7 @@ export default function EditPage(): React.ReactElement {
           </aside>
         </div>
       </main>
+      <Footer />
     </>
   );
 }
