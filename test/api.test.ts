@@ -399,6 +399,39 @@ test("discover: opt-in only, safe projection, page + JSON agree", async () => {
   assert.equal(gone.entries.some((e) => e.handle === "smoketest"), false, "delisting is instant");
 });
 
+test("identityType refiles after claim — the Discover chips follow", async () => {
+  // Refile the smoketest identity (claimed as whatever its template said).
+  const put = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ identityType: "event", discoverable: true }),
+  });
+  assert.equal(put.status, 200);
+  const j = (await put.json()) as { manifest: { identityType: string } };
+  assert.equal(j.manifest.identityType, "event", "type persisted");
+
+  // The directory files it under the new chip, and only there.
+  const events = (await (await fetch(`${base}/api/discover?type=event`)).json()) as { entries: Array<{ handle: string }> };
+  assert.ok(events.entries.some((e) => e.handle === "smoketest"), "listed under Events");
+  const biz = (await (await fetch(`${base}/api/discover?type=business`)).json()) as { entries: Array<{ handle: string }> };
+  assert.equal(biz.entries.some((e) => e.handle === "smoketest"), false, "no longer filed elsewhere");
+
+  // Junk stays out of the enum.
+  const bad = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ identityType: "alien-megacorp" }),
+  });
+  assert.equal(bad.status, 400, "types outside the enum rejected");
+
+  // Put the world back: delist and restore.
+  await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ identityType: "business", discoverable: false }),
+  });
+});
+
 test("the engine verifies the whole database tamper-evident", async () => {
   const report = await db.verify();
   assert.equal(report.ok, true, "verify ok");

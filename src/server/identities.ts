@@ -64,6 +64,11 @@ const manifestPatchSchema = z.object({
   background: backgroundSchema.nullish(),
   // Opt-in Discover listing — a boolean, owner-controlled, never implied.
   discoverable: z.boolean().optional(),
+  // Refile the page after claim — Discover made this field load-bearing.
+  // Same enum as claim; the editor UI offers the five real ones.
+  identityType: z
+    .enum(["personal", "business", "organization", "project", "event", "demo"])
+    .optional(),
   blocks: z.array(blockSchema).max(200).optional(),
 });
 

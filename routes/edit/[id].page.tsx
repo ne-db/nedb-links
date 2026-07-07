@@ -35,7 +35,7 @@ import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../sr
 import type { BackgroundConfig } from "../../src/lib/background";
 import { dragTarget, moveItem, siblingShift } from "../../src/lib/dragReorder";
 import { BRAND_IDS, SOC_PREFIX, brandGlyph } from "../../src/lib/renderers/social-icons";
-import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest } from "../../src/lib/identity";
+import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest, type IdentityType } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
 import { LogoStudio } from "../../src/components/LogoStudio";
 import { useAppConfig } from "../../src/lib/useAppConfig";
@@ -614,6 +614,7 @@ export default function EditPage(): React.ReactElement {
           themeCustom: manifest.themeCustom ?? null,
           background: manifest.background ?? null,
           discoverable: manifest.discoverable ?? false,
+          identityType: manifest.identityType,
           blocks: manifest.blocks,
         },
       );
@@ -824,6 +825,24 @@ export default function EditPage(): React.ReactElement {
                 <div>
                   <label className="label">Bio</label>
                   <textarea className="field min-h-[56px]" value={manifest.bio ?? ""} onChange={(e) => patch({ bio: e.target.value || undefined })} />
+                </div>
+                <div className="sm:max-w-xs">
+                  <label className="label">Page type</label>
+                  {/* Set by your claim template, editable ever since Discover
+                      made it load-bearing — it files you under the right chip
+                      and drives ORG on the vCard. */}
+                  <select
+                    className="field"
+                    value={manifest.identityType}
+                    onChange={(e) => patch({ identityType: e.target.value as IdentityType })}
+                  >
+                    {manifest.identityType === "demo" && <option value="demo">Demo</option>}
+                    <option value="personal">Person</option>
+                    <option value="business">Business</option>
+                    <option value="organization">Organization</option>
+                    <option value="project">Project</option>
+                    <option value="event">Event</option>
+                  </select>
                 </div>
               </div>
             </div>
