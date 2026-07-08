@@ -444,11 +444,11 @@ test("/brand serves deployment files — and never shadows Vite's /assets", asyn
   const r = await fetch(`${base}/brand/probe.png`);
   assert.equal(r.status, 200, "static mount answers");
   assert.equal(await r.text(), "not-really-a-png-and-that-is-fine");
-  const missing = await fetch(`${base}/assets/nope.png`);
-  assert.equal(missing.status, 404, "missing assets 404 clean");
-  // The handle route never sees /assets/* — and 'assets' is unclaimable.
-  const avail = (await (await fetch(`${base}/api/handles/assets/availability`)).json()) as { available: boolean };
-  assert.equal(avail.available, false);
+  const missing = await fetch(`${base}/brand/nope.png`);
+  assert.equal(missing.status, 404, "missing brand files 404 clean");
+  // 'brand' is an unclaimable handle; Vite keeps /assets untouched.
+  const avail = (await (await fetch(`${base}/api/handles/brand/availability`)).json()) as { available: boolean };
+  assert.equal(avail.available, false, "'brand' is reserved");
 });
 
 test("the engine verifies the whole database tamper-evident", async () => {
