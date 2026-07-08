@@ -91,5 +91,5 @@ preview.post("/", requireUser, wrap(async (req, res) => {
   const origin =
     config.publicOrigin || `${req.protocol}://${req.get("host") ?? "localhost"}`;
   res.setHeader("content-type", "text/html; charset=utf-8");
-  res.send(renderProfileHtml(manifest, { origin, brand: config.brandName }));
+  res.send(renderProfileHtml(manifest, { origin, brand: config.brandName, brandLogo: config.brandLogoUrl || undefined, favicon: config.faviconUrl || undefined, holoColors: config.holoColors.length ? config.holoColors : undefined }));
 }));

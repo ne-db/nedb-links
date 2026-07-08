@@ -12,6 +12,7 @@ import {
   COLLECTIONS,
   FONT_IDS,
   HEX_COLOR_RE,
+  isPremiumFont,
   isValidHandle,
   newIdentityId,
   SCHEMA_VERSION,
@@ -313,13 +314,24 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
     (b) => b.type === "giveaway" && !(b.data as { raffleId?: string }).raffleId,
   );
   const flippingDiscoverOn = patch.data.discoverable === true && current.discoverable !== true;
-  if (newGiveaways.length > 0 || flippingDiscoverOn) {
+  // Premium fonts: gate only NEW picks — anyone already using a font keeps
+  // it (grandfathered), so tier changes never break a published page.
+  const wantsPremiumFont = Boolean(
+    patch.data.themeCustom &&
+      (["headingFont", "bodyFont"] as const).some((k) => {
+        const next = patch.data.themeCustom?.[k];
+        return next && isPremiumFont(next) && next !== current.themeCustom?.[k];
+      }),
+  );
+  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont) {
     const status = await unlimitedStatus(auth);
     if (!status.unlimited) {
       res.status(403).json({
         error: newGiveaways.length
           ? "giveaways are a premium feature — upgrade to host one"
-          : "Discover listing is a premium feature — upgrade to be found",
+          : flippingDiscoverOn
+            ? "Discover listing is a premium feature — upgrade to be found"
+            : "that font is a premium unlock — upgrade to use the full vault",
         code: "premium_required",
       });
       return;

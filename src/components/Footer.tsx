@@ -21,8 +21,13 @@ export function Footer(): React.ReactElement {
   return (
     <footer className="mt-16 border-t border-ink-800 py-8">
       <div className="max-w-7xl mx-auto px-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 text-xs text-fg-subtle">
-        <Link href="/" className="font-display font-bold text-fg-muted hover:text-fg transition" title={brand}>
-          <span className="text-accent">⬡</span> {brand}
+        <Link href="/" className="font-display font-bold text-fg-muted hover:text-fg transition inline-flex items-center gap-1.5" title={brand}>
+          {cfg?.brandLogoUrl ? (
+            <img src={cfg.brandLogoUrl} alt="" className="h-4 w-4 object-contain" />
+          ) : (
+            <span className="text-accent">⬡</span>
+          )}
+          {brand}
         </Link>
         <span className="h-3 w-px bg-ink-800" aria-hidden />
         <a href="/discover" className="font-medium hover:text-fg transition">

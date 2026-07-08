@@ -122,7 +122,7 @@ render.get("/:handle", wrap(async (req, res, next) => {
     if (typeof v === "string") options[k] = v;
   }
 
-  const out = await renderer.render(manifest, { origin: originOf(req), brand: config.brandName, options });
+  const out = await renderer.render(manifest, { origin: originOf(req), brand: config.brandName, brandLogo: config.brandLogoUrl || undefined, favicon: config.faviconUrl || undefined, holoColors: config.holoColors.length ? config.holoColors : undefined, options });
   res.setHeader("content-type", out.contentType);
   if (out.filename) {
     res.setHeader("content-disposition", `attachment; filename="${out.filename}"`);

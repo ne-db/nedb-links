@@ -97,6 +97,11 @@ export interface RenderContext {
   origin: string;
   /** Deployment wordmark for public surfaces (default "NEDB Links"). */
   brand?: string;
+  /** Deployment logo/favicon URLs — per-storefront identity on public pages. */
+  brandLogo?: string;
+  favicon?: string;
+  /** Holographic ring stops for giveaway surfaces (validated hex). */
+  holoColors?: string[];
   /** Extra renderer-specific options (query params, print hints, ...). */
   options?: Record<string, unknown>;
 }

@@ -52,6 +52,11 @@ export interface LinksConfig {
   limitEnabled: boolean;
   /** ITC node JSON-RPC for the giveaway beacon (may embed basic auth — never log). */
   itcRpcUrl: string;
+  /** Deployment logo (replaces the ⬡ wordmark) and favicon — per-storefront identity. */
+  brandLogoUrl: string;
+  faviconUrl: string;
+  /** Holographic ring stops for giveaway surfaces — validated hex, brandable per deployment. */
+  holoColors: string[];
   /** Free profiles per account (default 1 when limits are on). */
   freeProfileLimit: number;
   /** Stripe (pay-what-you-want, one time). Absent = fiat door closed. */
@@ -101,6 +106,13 @@ export function loadConfig(): LinksConfig {
       process.env.LINKS_FREE_PROFILE_LIMIT !== undefined,
     freeProfileLimit: Math.max(1, Number(process.env.LINKS_FREE_PROFILE_LIMIT || 1)),
     itcRpcUrl: process.env.ITC_RPC_URL || "",
+    brandLogoUrl: process.env.LINKS_BRAND_LOGO_URL || "",
+    faviconUrl: process.env.LINKS_FAVICON_URL || "",
+    // Hex-only, comma-separated; junk entries dropped silently.
+    holoColors: (process.env.LINKS_HOLO_COLORS || "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter((c) => /^#[0-9a-fA-F]{6}$/.test(c)),
     stripeSecretKey: process.env.STRIPE_SECRET_KEY || undefined,
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || undefined,
     pwywMinCents: Math.max(50, Number(process.env.LINKS_PWYW_MIN_CENTS || 100)),

@@ -60,9 +60,13 @@ export function Nav({
     <nav className="streamline w-full border-b border-ink-800 bg-ink-900/85 backdrop-blur sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-5 h-12 flex items-center gap-3 justify-between">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <Link href="/" className="font-display font-bold text-lg tracking-tight text-fg shrink-0" title={brand}>
-            <span className="text-accent">⬡</span>
-            <span className={context ? "hidden lg:inline" : ""}> {brand}</span>
+          <Link href="/" className="font-display font-bold text-lg tracking-tight text-fg shrink-0 inline-flex items-center gap-2" title={brand}>
+            {cfg?.brandLogoUrl ? (
+              <img src={cfg.brandLogoUrl} alt="" className="h-6 w-6 object-contain" />
+            ) : (
+              <span className="text-accent">⬡</span>
+            )}
+            <span className={context ? "hidden lg:inline" : ""}>{brand}</span>
           </Link>
           {!context && (
             <>

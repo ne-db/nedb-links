@@ -347,19 +347,19 @@ function GiveawayFields({
           />
         </div>
         <div>
-          <label className="label">Max entries</label>
+          <label className="label">Total spots</label>
           <input
             className="field"
             type="number"
-            min={2}
+            min={1}
             placeholder="no cap"
             value={d.maxEntries ? Number(d.maxEntries) : ""}
             disabled={locked}
             onChange={(e) => {
               const n = Number(e.target.value);
-              onChange({ ...d, maxEntries: n >= 2 ? Math.min(100000, n) : undefined });
+              onChange({ ...d, maxEntries: n >= 1 ? Math.min(100000, n) : undefined });
             }}
-            title="Scarcity cap — entries stop early when the spots fill"
+            title="Total entries allowed — 1 makes it a first-come flash drop. One entry per person is separate and always on."
           />
         </div>
       </div>
@@ -1259,6 +1259,9 @@ export default function EditPage(): React.ReactElement {
                     ] as const).map(([key, label]) => (
                       <div key={key}>
                         <label className="label">{label}</label>
+                        {/* The font vault: three free, the rest premium.
+                            Preview is free (try before you buy); the SAVE is
+                            gated server-side when limits are on. */}
                         <select
                           value={manifest.themeCustom?.[key] ?? "system"}
                           onChange={(e) =>
@@ -1271,11 +1274,24 @@ export default function EditPage(): React.ReactElement {
                           }
                           className="field"
                         >
-                          {Object.entries(FONTS).map(([id, f]) => (
-                            <option key={id} value={id}>
-                              {f.label}
-                            </option>
-                          ))}
+                          <optgroup label="Free">
+                            {Object.entries(FONTS)
+                              .filter(([, f]) => f.tier === "free")
+                              .map(([id, f]) => (
+                                <option key={id} value={id}>
+                                  {f.label}
+                                </option>
+                              ))}
+                          </optgroup>
+                          <optgroup label="Premium ✨">
+                            {Object.entries(FONTS)
+                              .filter(([, f]) => f.tier === "premium")
+                              .map(([id, f]) => (
+                                <option key={id} value={id}>
+                                  ✨ {f.label}
+                                </option>
+                              ))}
+                          </optgroup>
                         </select>
                       </div>
                     ))}

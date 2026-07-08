@@ -399,3 +399,28 @@ test("surfaces block: chips honor toggles; head carries alternate links", () => 
   assert.ok(plain.includes('rel="alternate" type="text/markdown"'), "md alternate link always present");
   assert.ok(plain.includes('rel="alternate" type="application/json"'), "json alternate link always present");
 });
+
+test("brand assets thread through the public page when the deployment has them", () => {
+  const ctx = {
+    origin: "https://links.example.com",
+    brand: "OurLynx",
+    brandLogo: "https://cdn.example.com/lynx.png",
+    favicon: "https://cdn.example.com/lynx-fav.png",
+    holoColors: ["#00C2FF", "#3A7DFF", "#7A5CFF", "#B26CFF"],
+  };
+  const m = fixture({
+    blocks: [
+      { id: "blk_gv", type: "giveaway", order: 0, data: { raffleId: "rfl_aabbccddeeff00112233", prize: "Lynx swag", closesAt: "2027-01-01T00:00:00.000Z", winners: 1 } },
+    ],
+  });
+  const html = renderProfileHtml(m, ctx);
+  assert.ok(html.includes('rel="icon" href="https://cdn.example.com/lynx-fav.png"'), "favicon per deployment");
+  assert.ok(html.includes('class="blg" src="https://cdn.example.com/lynx.png"'), "logo in the footer chip");
+  assert.ok(html.includes("#00C2FF, #3A7DFF, #7A5CFF, #B26CFF, #00C2FF"), "holo ring streams the brand ramp, closed loop");
+
+  // Undressed deployments keep the defaults: ⬡ and the rainbow.
+  const plain = renderProfileHtml(m, CTX);
+  assert.ok(plain.includes("<b>⬡</b>"), "wordmark glyph without a logo");
+  assert.ok(plain.includes("#6366f1, #22d3ee"), "default ring without brand colors");
+  assert.equal(plain.includes("rel=\"icon\""), false, "no favicon link unless configured");
+});

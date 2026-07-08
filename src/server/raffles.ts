@@ -492,10 +492,16 @@ raffles.get("/api/raffles/:id/leads", requireUser, wrap(async (req, res) => {
 
 // ── Zero-JS public pages: /r/:id (enter) and /r/:id/verify ───────────────────
 
+function holoStops(): string {
+  const c = config.holoColors;
+  return c.length >= 2 ? [...c, c[0]].join(", ") : "#6366f1, #22d3ee, #34d399, #fbbf24, #ec4899, #6366f1";
+}
+
 function pageShell(title: string, body: string): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(title)}</title>
+${config.faviconUrl ? `<link rel="icon" href="${esc(config.faviconUrl)}" />` : ""}
 <style>
   /* ── The dopamine kit — pure CSS, zero JS, killed by reduced-motion ── */
   @property --gvang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
@@ -516,8 +522,7 @@ function pageShell(title: string, body: string): string {
           box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), inset 0 -1px 0 rgb(0 0 0 / 0.5);
           -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
   .card::before, .card::after { content: ""; position: absolute; inset: -2px; border-radius: 20px; z-index: -1;
-    background: conic-gradient(from var(--gvang),
-      #6366f1, #22d3ee, #34d399, #fbbf24, #ec4899, #6366f1);
+    background: conic-gradient(from var(--gvang), ${holoStops()});
     animation: gvspin 6s linear infinite; }
   .card::after { filter: blur(16px); opacity: .45; inset: -4px; }
   .card:hover::before, .card:hover::after { animation-duration: 2.2s; }
@@ -582,7 +587,7 @@ function pageShell(title: string, body: string): string {
     input:focus, button, .card { transition: none; transform: none; }
   }
 </style></head><body><main>${body}
-<footer><a href="/">⬡ ${esc(config.brandName)}</a></footer>
+<footer><a href="/">${config.brandLogoUrl ? `<img src="${esc(config.brandLogoUrl)}" style="width:15px;height:15px;object-fit:contain;vertical-align:-2px" alt="" /> ` : "⬡ "}${esc(config.brandName)}</a></footer>
 </main></body></html>`;
 }
 

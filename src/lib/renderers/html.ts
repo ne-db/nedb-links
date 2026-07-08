@@ -139,6 +139,12 @@ function embedFrame(url: string): string | null {
   return null;
 }
 
+/** Conic stops for the giveaway ring — deployment-brandable, hex-only. */
+function holoStops(ctx: RenderContext): string {
+  const c = ctx.holoColors && ctx.holoColors.length >= 2 ? ctx.holoColors : null;
+  return c ? [...c, c[0]].join(", ") : "#6366f1, #22d3ee, #34d399, #fbbf24, #ec4899, #6366f1";
+}
+
 function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
   const d = b.data as Record<string, unknown>;
   switch (b.type) {
@@ -261,6 +267,7 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
 <meta property="og:url" content="${url}" />
 <meta name="twitter:card" content="summary" />
 <link rel="canonical" href="${url}" />
+${ctx.favicon ? `<link rel="icon" href="${esc(safeUrl(ctx.favicon))}" /><link rel="apple-touch-icon" href="${esc(safeUrl(ctx.favicon))}" />` : ""}
 <link rel="alternate" type="text/markdown" href="${url}.md" title="Markdown" />
 <link rel="alternate" type="application/json" href="${url}?format=json" title="JSON" />
 <link rel="alternate" type="text/vcard" href="${url}?format=vcard" title="vCard" />
@@ -346,7 +353,7 @@ ${fonts.link}
                      0 1px 2px rgba(0,0,0,0.08), 0 8px 24px -14px ${t.accent}40; }
   .gvw::before, .gvw::after { content: ""; position: absolute; inset: -2px; border-radius: 18px;
     z-index: -1; pointer-events: none;
-    background: conic-gradient(from var(--gvang), #6366f1, #22d3ee, #34d399, #fbbf24, #ec4899, #6366f1);
+    background: conic-gradient(from var(--gvang), ${holoStops(ctx)});
     animation: gvspin 7s linear infinite; }
   .gvw::after { filter: blur(14px); opacity: .4; inset: -4px; }
   .gvw:hover::before, .gvw:hover::after { animation-duration: 2.4s; }
@@ -393,6 +400,8 @@ ${fonts.link}
              padding: 7px 14px; transition: border-color 0.15s ease, color 0.15s ease; }
   footer a:hover { border-color: ${t.accent}55; color: ${pageText(t)}; }
   footer a b { color: ${t.accent}; font-weight: 700; }
+  footer a .blg { width: 16px; height: 16px; object-fit: contain; display: inline-block;
+                  vertical-align: -3px; margin-right: 2px; }
 
   @media (prefers-reduced-motion: reduce) {
     .id, section > *, footer { animation: none; }
@@ -414,7 +423,7 @@ ${fonts.link}
 ${blocks}
   </section>
   <footer>
-    <a href="${origin}" rel="noopener"><b>⬡</b> published with ${brand}</a>
+    <a href="${origin}" rel="noopener">${ctx.brandLogo ? `<img class="blg" src="${esc(safeUrl(ctx.brandLogo))}" alt="" />` : `<b>⬡</b>`} published with ${brand}</a>
   </footer>
 </main>
 </body>
