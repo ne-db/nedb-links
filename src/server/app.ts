@@ -94,6 +94,14 @@ export function createApp(): Express {
   app.use("/api/preview", preview);
   app.use("/api/upload", uploads);
 
+  // ── Deployment assets (/assets) ───────────────────────────────────────────
+  // Static files for the storefront: brand logo, favicon, og images.
+  // LINKS_ASSETS_DIR (default ./public) — drop files in, reference them as
+  // /assets/<name> in the brand env knobs. "assets" is a reserved handle,
+  // and this mount sits BEFORE /:handle, so the two never collide.
+  const assetsDir = resolve(process.cwd(), process.env.LINKS_ASSETS_DIR || "public");
+  app.use("/assets", express.static(assetsDir, { index: false, maxAge: "1h" }));
+
   // ── Editor SPA (production build) ─────────────────────────────────────────
   const dist = resolve(process.cwd(), "dist");
   const hasDist = existsSync(join(dist, "index.html"));

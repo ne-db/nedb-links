@@ -97,6 +97,16 @@ export function safeUrl(u: unknown): string {
   return "#";
 }
 
+/** Brand asset URLs: absolute https OR same-origin root-relative
+ *  (/assets/…). Protocol-relative (//host) and schemes are refused —
+ *  an env typo must never inject a foreign origin or a script URL. */
+export function assetUrl(u: unknown): string {
+  const s = String(u ?? "");
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith("/") && !s.startsWith("//")) return s;
+  return "";
+}
+
 /** Google Fonts link for the manifest's curated picks — built from the
  *  FONTS map only (user input is an enum id, never a string). */
 export function fontAssets(m: IdentityManifest): {
@@ -267,7 +277,7 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
 <meta property="og:url" content="${url}" />
 <meta name="twitter:card" content="summary" />
 <link rel="canonical" href="${url}" />
-${ctx.favicon ? `<link rel="icon" href="${esc(safeUrl(ctx.favicon))}" /><link rel="apple-touch-icon" href="${esc(safeUrl(ctx.favicon))}" />` : ""}
+${ctx.favicon && assetUrl(ctx.favicon) ? `<link rel="icon" href="${esc(assetUrl(ctx.favicon))}" /><link rel="apple-touch-icon" href="${esc(assetUrl(ctx.favicon))}" />` : ""}
 <link rel="alternate" type="text/markdown" href="${url}.md" title="Markdown" />
 <link rel="alternate" type="application/json" href="${url}?format=json" title="JSON" />
 <link rel="alternate" type="text/vcard" href="${url}?format=vcard" title="vCard" />
@@ -423,7 +433,7 @@ ${fonts.link}
 ${blocks}
   </section>
   <footer>
-    <a href="${origin}" rel="noopener">${ctx.brandLogo ? `<img class="blg" src="${esc(safeUrl(ctx.brandLogo))}" alt="" />` : `<b>⬡</b>`} published with ${brand}</a>
+    <a href="${origin}" rel="noopener">${ctx.brandLogo && assetUrl(ctx.brandLogo) ? `<img class="blg" src="${esc(assetUrl(ctx.brandLogo))}" alt="" />` : `<b>⬡</b>`} published with ${brand}</a>
   </footer>
 </main>
 </body>

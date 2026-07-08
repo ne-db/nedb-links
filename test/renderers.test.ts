@@ -424,3 +424,21 @@ test("brand assets thread through the public page when the deployment has them",
   assert.ok(plain.includes("#6366f1, #22d3ee"), "default ring without brand colors");
   assert.equal(plain.includes("rel=\"icon\""), false, "no favicon link unless configured");
 });
+
+test("brand asset URLs: root-relative allowed, foreign/scheme injection refused", () => {
+  const rel = renderProfileHtml(fixture(), {
+    origin: "https://links.example.com",
+    brandLogo: "/assets/lynx-mark.png",
+    favicon: "/assets/lynx-favicon.png",
+  });
+  assert.ok(rel.includes('src="/assets/lynx-mark.png"'), "relative logo passes");
+  assert.ok(rel.includes('rel="icon" href="/assets/lynx-favicon.png"'), "relative favicon passes");
+
+  const evil = renderProfileHtml(fixture(), {
+    origin: "https://links.example.com",
+    brandLogo: "//evil.example/steal.png",
+    favicon: "javascript:alert(1)",
+  });
+  assert.ok(evil.includes("<b>⬡</b>"), "protocol-relative logo refused — wordmark fallback");
+  assert.equal(evil.includes('rel="icon"'), false, "scheme favicon refused entirely");
+});
