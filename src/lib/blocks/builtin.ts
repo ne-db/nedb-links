@@ -114,8 +114,10 @@ export const giveawayBlock = defineBlock({
     winners: z.number().int().min(1).max(20).default(1),
     /** The owner's rules — the fine print, rendered on the entry page. */
     rules: z.string().max(1200).optional(),
-    /** Scarcity cap — entries stop early when the spots fill. */
-    maxEntries: z.number().int().min(2).max(100000).optional(),
+    /** Scarcity cap — TOTAL spots; entries stop early when they fill.
+     *  min 1: "first verified entry wins" is a legit flash-drop. The
+     *  one-entry-per-PERSON rule is separate and always on. */
+    maxEntries: z.number().int().min(1).max(100000).optional(),
   }),
   defaults: () => ({
     prize: "",

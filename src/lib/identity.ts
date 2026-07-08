@@ -79,20 +79,69 @@ export const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
  * Ten registers, from boardroom to MySpace chaos.
  */
 export const FONTS = {
-  system:         { label: "System (clean)",        css: "system-ui, -apple-system, 'Segoe UI', sans-serif", google: null },
-  inter:          { label: "Inter (modern)",        css: "'Inter', system-ui, sans-serif",            google: "Inter:wght@400;600;800" },
-  "space-grotesk":{ label: "Space Grotesk (tech)",  css: "'Space Grotesk', system-ui, sans-serif",    google: "Space+Grotesk:wght@400;600;700" },
-  poppins:        { label: "Poppins (friendly)",    css: "'Poppins', system-ui, sans-serif",          google: "Poppins:wght@400;600;700" },
-  montserrat:     { label: "Montserrat (bold)",     css: "'Montserrat', system-ui, sans-serif",       google: "Montserrat:wght@400;600;800" },
-  playfair:       { label: "Playfair (elegant)",    css: "'Playfair Display', Georgia, serif",        google: "Playfair+Display:wght@400;700" },
-  lora:           { label: "Lora (literary)",       css: "'Lora', Georgia, serif",                    google: "Lora:wght@400;600" },
-  "dm-serif":     { label: "DM Serif (editorial)",  css: "'DM Serif Display', Georgia, serif",        google: "DM+Serif+Display" },
-  "jetbrains-mono":{ label: "JetBrains Mono (dev)", css: "'JetBrains Mono', ui-monospace, monospace", google: "JetBrains+Mono:wght@400;600" },
-  caveat:         { label: "Caveat (handwritten)",  css: "'Caveat', cursive",                         google: "Caveat:wght@500;700" },
+  // ── Free tier — three registers that cover the basics ─────────────────
+  system:         { label: "System (clean)",        tier: "free",    css: "system-ui, -apple-system, 'Segoe UI', sans-serif", google: null },
+  inter:          { label: "Inter (modern)",        tier: "free",    css: "'Inter', system-ui, sans-serif",            google: "Inter:wght@400;600;800" },
+  poppins:        { label: "Poppins (friendly)",    tier: "free",    css: "'Poppins', system-ui, sans-serif",          google: "Poppins:wght@400;600;700" },
+
+  // ── Premium: modern sans ───────────────────────────────────────────────
+  "space-grotesk":{ label: "Space Grotesk (tech)",  tier: "premium", css: "'Space Grotesk', system-ui, sans-serif",    google: "Space+Grotesk:wght@400;600;700" },
+  montserrat:     { label: "Montserrat (bold)",     tier: "premium", css: "'Montserrat', system-ui, sans-serif",       google: "Montserrat:wght@400;600;800" },
+  manrope:        { label: "Manrope (crisp)",       tier: "premium", css: "'Manrope', system-ui, sans-serif",          google: "Manrope:wght@400;600;800" },
+  outfit:         { label: "Outfit (geometric)",    tier: "premium", css: "'Outfit', system-ui, sans-serif",           google: "Outfit:wght@400;600;800" },
+  sora:           { label: "Sora (future)",         tier: "premium", css: "'Sora', system-ui, sans-serif",             google: "Sora:wght@400;600;800" },
+  urbanist:       { label: "Urbanist (sleek)",      tier: "premium", css: "'Urbanist', system-ui, sans-serif",         google: "Urbanist:wght@400;600;800" },
+  "plus-jakarta": { label: "Plus Jakarta (studio)", tier: "premium", css: "'Plus Jakarta Sans', system-ui, sans-serif", google: "Plus+Jakarta+Sans:wght@400;600;800" },
+  "dm-sans":      { label: "DM Sans (neutral)",     tier: "premium", css: "'DM Sans', system-ui, sans-serif",          google: "DM+Sans:wght@400;500;700" },
+  figtree:        { label: "Figtree (rounded)",     tier: "premium", css: "'Figtree', system-ui, sans-serif",          google: "Figtree:wght@400;600;800" },
+  lexend:         { label: "Lexend (readable)",     tier: "premium", css: "'Lexend', system-ui, sans-serif",           google: "Lexend:wght@400;600;800" },
+
+  // ── Premium: display & impact ──────────────────────────────────────────
+  orbitron:       { label: "Orbitron (sci-fi)",     tier: "premium", css: "'Orbitron', system-ui, sans-serif",         google: "Orbitron:wght@500;700;900" },
+  "bebas-neue":   { label: "Bebas Neue (poster)",   tier: "premium", css: "'Bebas Neue', system-ui, sans-serif",       google: "Bebas+Neue" },
+  anton:          { label: "Anton (loud)",          tier: "premium", css: "'Anton', system-ui, sans-serif",            google: "Anton" },
+  righteous:      { label: "Righteous (retro)",     tier: "premium", css: "'Righteous', system-ui, sans-serif",        google: "Righteous" },
+  audiowide:      { label: "Audiowide (neon)",      tier: "premium", css: "'Audiowide', system-ui, sans-serif",        google: "Audiowide" },
+  unbounded:      { label: "Unbounded (wide)",      tier: "premium", css: "'Unbounded', system-ui, sans-serif",        google: "Unbounded:wght@400;700;900" },
+  "archivo-black":{ label: "Archivo Black (heavy)", tier: "premium", css: "'Archivo Black', system-ui, sans-serif",    google: "Archivo+Black" },
+  "russo-one":    { label: "Russo One (athletic)",  tier: "premium", css: "'Russo One', system-ui, sans-serif",        google: "Russo+One" },
+
+  // ── Premium: serif & editorial ─────────────────────────────────────────
+  playfair:       { label: "Playfair (elegant)",    tier: "premium", css: "'Playfair Display', Georgia, serif",        google: "Playfair+Display:wght@400;700" },
+  lora:           { label: "Lora (literary)",       tier: "premium", css: "'Lora', Georgia, serif",                    google: "Lora:wght@400;600" },
+  "dm-serif":     { label: "DM Serif (editorial)",  tier: "premium", css: "'DM Serif Display', Georgia, serif",        google: "DM+Serif+Display" },
+  cormorant:      { label: "Cormorant (couture)",   tier: "premium", css: "'Cormorant Garamond', Georgia, serif",      google: "Cormorant+Garamond:wght@400;600;700" },
+  "libre-baskerville": { label: "Baskerville (classic)", tier: "premium", css: "'Libre Baskerville', Georgia, serif",  google: "Libre+Baskerville:wght@400;700" },
+  fraunces:       { label: "Fraunces (soft serif)", tier: "premium", css: "'Fraunces', Georgia, serif",                google: "Fraunces:wght@400;600;900" },
+  "crimson-pro":  { label: "Crimson Pro (book)",    tier: "premium", css: "'Crimson Pro', Georgia, serif",             google: "Crimson+Pro:wght@400;600" },
+  spectral:       { label: "Spectral (essay)",      tier: "premium", css: "'Spectral', Georgia, serif",                google: "Spectral:wght@400;600" },
+
+  // ── Premium: mono & terminal ───────────────────────────────────────────
+  "jetbrains-mono":{ label: "JetBrains Mono (dev)", tier: "premium", css: "'JetBrains Mono', ui-monospace, monospace", google: "JetBrains+Mono:wght@400;600" },
+  "ibm-plex-mono":{ label: "IBM Plex Mono (lab)",   tier: "premium", css: "'IBM Plex Mono', ui-monospace, monospace",  google: "IBM+Plex+Mono:wght@400;600" },
+  "space-mono":   { label: "Space Mono (quirky)",   tier: "premium", css: "'Space Mono', ui-monospace, monospace",     google: "Space+Mono:wght@400;700" },
+  "fira-code":    { label: "Fira Code (ligatures)", tier: "premium", css: "'Fira Code', ui-monospace, monospace",      google: "Fira+Code:wght@400;600" },
+
+  // ── Premium: script & handmade ─────────────────────────────────────────
+  caveat:         { label: "Caveat (handwritten)",  tier: "premium", css: "'Caveat', cursive",                         google: "Caveat:wght@500;700" },
+  pacifico:       { label: "Pacifico (surf)",       tier: "premium", css: "'Pacifico', cursive",                       google: "Pacifico" },
+  "dancing-script": { label: "Dancing Script (flow)", tier: "premium", css: "'Dancing Script', cursive",               google: "Dancing+Script:wght@500;700" },
+  "permanent-marker": { label: "Marker (street)",   tier: "premium", css: "'Permanent Marker', cursive",               google: "Permanent+Marker" },
+  satisfy:        { label: "Satisfy (signature)",   tier: "premium", css: "'Satisfy', cursive",                        google: "Satisfy" },
 } as const;
 
 export type FontId = keyof typeof FONTS;
 export const FONT_IDS = Object.keys(FONTS) as [FontId, ...FontId[]];
+
+/** The free tier — everything else is a premium unlock. */
+export const FREE_FONT_IDS = (Object.keys(FONTS) as FontId[]).filter(
+  (id) => FONTS[id].tier === "free",
+);
+
+export function isPremiumFont(id: string): boolean {
+  const f = (FONTS as Record<string, { tier: string }>)[id];
+  return Boolean(f && f.tier === "premium");
+}
 
 /** The canonical object every renderer understands. */
 export interface IdentityManifest {

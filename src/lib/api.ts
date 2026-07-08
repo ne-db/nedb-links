@@ -13,6 +13,7 @@ export const EMAIL_KEY = "links-email";
 /** Deployment config — which product this is. Fetched once, cached. */
 export interface AppConfig {
   authMode: "wallet" | "email";
+  brandLogoUrl?: string;
   brandName: string;
   defaultTheme: string;
   fiatDoor: boolean;

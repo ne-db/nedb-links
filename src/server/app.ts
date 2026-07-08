@@ -74,6 +74,7 @@ export function createApp(): Express {
     res.json({
       authMode: config.authMode,
       brandName: config.brandName,
+      brandLogoUrl: config.brandLogoUrl || undefined,
       defaultTheme: config.defaultTheme,
       fiatDoor: Boolean(config.stripeSecretKey),
       limitEnabled: config.limitEnabled,
@@ -104,9 +105,14 @@ export function createApp(): Express {
         "<head>",
         `<head><script>window.__LINKS_CONFIG__=${JSON.stringify({
           brandName: config.brandName,
+          brandLogoUrl: config.brandLogoUrl || undefined,
           defaultTheme: config.defaultTheme,
           authMode: config.authMode,
-        })}</script>`,
+        })}</script>${
+          config.faviconUrl
+            ? `<link rel="icon" href="${config.faviconUrl}" /><link rel="apple-touch-icon" href="${config.faviconUrl}" />`
+            : ""
+        }`,
       )
     : null;
   const sendShell = (res: Response): void => {
