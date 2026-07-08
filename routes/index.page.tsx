@@ -367,7 +367,7 @@ export default function ClaimPage(): React.ReactElement {
               <input
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
-                placeholder="marisayvettehair"
+                placeholder="mintontheavenue"
                 autoFocus
                 className="flex-1 bg-transparent outline-none font-mono text-lg text-fg placeholder:text-fg-faint min-w-0"
               />
