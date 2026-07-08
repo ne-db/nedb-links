@@ -101,6 +101,7 @@ billing.get("/status", requireUser, wrap(async (_req, res) => {
   res.json({
     limitEnabled: config.limitEnabled,
     freeLimit: config.freeProfileLimit,
+    freeBlockLimit: config.freeBlockLimit,
     owned,
     unlimited: status.unlimited,
     via: status.via,

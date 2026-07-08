@@ -114,6 +114,44 @@ test("billing status reports the gate honestly (holder check fail-closed)", asyn
   assert.equal(s.itcThreshold, 100, "Mark's threshold");
 });
 
+test("the block cap: templates slice at claim, saves gate at the limit — all blocks, no grandfathering", async () => {
+  // The claim above used the creator template, which seeds MORE than
+  // the free cap — the claim must have sliced it to freeBlockLimit.
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string; blockCount: number }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn, "claimed identity listed");
+  assert.ok(idn.blockCount <= 3, `template seed sliced to the cap (got ${idn.blockCount})`);
+
+  const mk = (n) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `blk_cap${i}`,
+      type: "header",
+      order: i,
+      data: { text: `Block ${i + 1}` },
+    }));
+
+  // Exactly at the cap: fine.
+  const ok = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ blocks: mk(3) }),
+  });
+  assert.equal(ok.status, 200, "three blocks save free");
+
+  // One over: the wall — and it names the doorway.
+  const over = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ blocks: mk(4) }),
+  });
+  assert.equal(over.status, 403, "the fourth block gates");
+  const j = (await over.json()) as { code?: string; error?: string };
+  assert.equal(j.code, "premium_required");
+  assert.match(j.error ?? "", /go unlimited/i);
+});
+
 test("checkout without Stripe answers 503, not a crash", async () => {
   const r = await fetch(`${base}/api/billing/checkout`, {
     method: "POST",
@@ -151,4 +189,24 @@ test("a supporter entitlement unlocks unlimited", async () => {
     body: claimBody("gatesecond"),
   });
   assert.equal(r.status, 201, "supporter claims freely");
+});
+
+test("premium lifts the block cap — same page, fourth block welcome", async () => {
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn);
+  const blocks = Array.from({ length: 6 }, (_, i) => ({
+    id: `blk_prem${i}`,
+    type: "header",
+    order: i,
+    data: { text: `Premium block ${i + 1}` },
+  }));
+  const r = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ blocks }),
+  });
+  assert.equal(r.status, 200, "six blocks save fine once premium");
 });

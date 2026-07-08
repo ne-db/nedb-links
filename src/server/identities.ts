@@ -32,6 +32,7 @@ import { canClaimAnother } from "./billing";
 import { grantsOf, hasRole, writeOwnerGrant } from "./grants";
 import { wrap } from "./util";
 import { causalParent, db } from "./db";
+import { config } from "./config";
 
 export const identities = Router();
 export const handles = Router();
@@ -172,6 +173,16 @@ identities.post("/", requireUser, wrap(async (req, res) => {
   const seeded = template
     ? template.seed({ handle, displayName: body.data.displayName })
     : { blocks: [] as Block[], identityType: body.data.identityType ?? ("personal" as const) };
+  // Free tier + limits on: templates may seed more blocks than the cap
+  // allows — slice at claim so the first save doesn't instantly gate.
+  if (config.limitEnabled && seeded.blocks.length > config.freeBlockLimit) {
+    const status = await unlimitedStatus(auth);
+    if (!status.unlimited) {
+      seeded.blocks = seeded.blocks
+        .slice(0, config.freeBlockLimit)
+        .map((b, i) => ({ ...b, order: i }));
+    }
+  }
 
   const manifest: IdentityManifest = {
     schemaVersion: SCHEMA_VERSION,
@@ -314,6 +325,10 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
     (b) => b.type === "giveaway" && !(b.data as { raffleId?: string }).raffleId,
   );
   const flippingDiscoverOn = patch.data.discoverable === true && current.discoverable !== true;
+  // The block cap: free pages hold freeBlockLimit blocks TOTAL (all
+  // types — Mark's call), no grandfathering. Public pages keep
+  // rendering whatever exists; only SAVES gate.
+  const overBlockCap = config.limitEnabled && blocks.length > config.freeBlockLimit;
   // Premium fonts: gate only NEW picks — anyone already using a font keeps
   // it (grandfathered), so tier changes never break a published page.
   const wantsPremiumFont = Boolean(
@@ -323,7 +338,7 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
         return next && isPremiumFont(next) && next !== current.themeCustom?.[k];
       }),
   );
-  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont) {
+  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont || overBlockCap) {
     const status = await unlimitedStatus(auth);
     if (!status.unlimited) {
       res.status(403).json({
@@ -331,7 +346,9 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
           ? "giveaways are a premium feature — upgrade to host one"
           : flippingDiscoverOn
             ? "Discover listing is a premium feature — upgrade to be found"
-            : "that font is a premium unlock — upgrade to use the full vault",
+            : wantsPremiumFont
+              ? "that font is a premium unlock — upgrade to use the full vault"
+              : `free pages hold ${config.freeBlockLimit} blocks — go unlimited to keep building`,
         code: "premium_required",
       });
       return;

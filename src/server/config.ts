@@ -59,6 +59,8 @@ export interface LinksConfig {
   holoColors: string[];
   /** Free profiles per account (default 1 when limits are on). */
   freeProfileLimit: number;
+  /** Blocks per page on the free tier — unlimited for premium. */
+  freeBlockLimit: number;
   /** Stripe (pay-what-you-want, one time). Absent = fiat door closed. */
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
@@ -105,6 +107,7 @@ export function loadConfig(): LinksConfig {
       Boolean(process.env.STRIPE_SECRET_KEY) ||
       process.env.LINKS_FREE_PROFILE_LIMIT !== undefined,
     freeProfileLimit: Math.max(1, Number(process.env.LINKS_FREE_PROFILE_LIMIT || 1)),
+    freeBlockLimit: Math.max(1, Number(process.env.LINKS_FREE_BLOCK_LIMIT || 3)),
     itcRpcUrl: process.env.ITC_RPC_URL || "",
     brandLogoUrl: process.env.LINKS_BRAND_LOGO_URL || "",
     faviconUrl: process.env.LINKS_FAVICON_URL || "",

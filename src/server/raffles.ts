@@ -48,6 +48,8 @@ export interface RaffleDoc {
   description?: string;
   winners: number;
   closesAt: string;
+  /** Owner ended entries early — the EFFECTIVE close when present. */
+  closedEarlyAt?: string;
   rules?: string;
   maxEntries?: number;
   commitment: string;
@@ -113,9 +115,19 @@ async function entriesOf(raffleId: string): Promise<EntryDoc[]> {
   return rows;
 }
 
+/** The moment entries actually stop: the scheduled close, or the
+ *  owner's early end — whichever comes first. The beacon anchors here
+ *  too, so an early end can't cherry-pick a favorable block. */
+function effectiveClose(r: RaffleDoc): string {
+  if (r.closedEarlyAt && new Date(r.closedEarlyAt).getTime() < new Date(r.closesAt).getTime()) {
+    return r.closedEarlyAt;
+  }
+  return r.closesAt;
+}
+
 function state(r: RaffleDoc): "open" | "closed" | "drawn" {
   if (r.drawnAt) return "drawn";
-  return Date.now() < new Date(r.closesAt).getTime() ? "open" : "closed";
+  return Date.now() < new Date(effectiveClose(r)).getTime() ? "open" : "closed";
 }
 
 /** The public projection — PII-free, secret-free until drawn. */
@@ -127,6 +139,8 @@ function publicView(r: RaffleDoc, entryCount: number) {
     description: r.description,
     winners: r.winners,
     closesAt: r.closesAt,
+    closedEarlyAt: r.closedEarlyAt,
+    effectiveClosesAt: effectiveClose(r),
     rules: r.rules,
     maxEntries: r.maxEntries,
     commitment: r.commitment,
@@ -239,11 +253,12 @@ const enterSchema = z.object({
 
 /** GET /api/raffles/:id — public state. No PII, no secret until drawn. */
 raffles.get("/api/raffles/:id", wrap(async (req, res) => {
-  const r = await getRaffle(String(req.params.id));
+  let r = await getRaffle(String(req.params.id));
   if (!r) {
     res.status(404).json({ error: "not found" });
     return;
   }
+  r = await settleIfDue(r); // lazy auto-draw — the API view settles it too
   const entries = await entriesOf(r.raffleId);
   res.json({ raffle: publicView(r, entries.length) });
 }));
@@ -382,37 +397,25 @@ raffles.post("/api/raffles/:id/confirm", wrap(async (req, res) => {
   res.status(201).json({ ok: true, ticketId: entry.ticketId });
 }));
 
-/** POST /api/raffles/:id/draw — owner, after close. Idempotent. */
-raffles.post("/api/raffles/:id/draw", requireUser, wrap(async (req, res) => {
-  const auth = authOf(res);
-  if (!auth) {
-    res.status(401).json({ error: "unauthorized" });
-    return;
-  }
-  const r = await getRaffle(String(req.params.id));
-  if (!r) {
-    res.status(404).json({ error: "not found" });
-    return;
-  }
-  if (!(await hasRole(r.identityId, auth, "editor"))) {
-    res.status(403).json({ error: "only the page owner draws" });
-    return;
-  }
-  if (r.drawnAt) {
-    const entries = await entriesOf(r.raffleId);
-    res.json({ raffle: publicView(r, entries.length), already: true });
-    return;
-  }
-  if (state(r) !== "closed") {
-    res.status(409).json({ error: "entries are still open — the draw waits for close" });
-    return;
-  }
+/**
+ * The draw itself — shared by three triggers so the outcome mechanics
+ * can never differ by path:
+ *   1. the owner's manual Draw button,
+ *   2. the owner's End-giveaway-now action (end + draw in one motion),
+ *   3. LAZY AUTO-DRAW: any public view of a closed-but-undrawn raffle
+ *      settles it on the spot. No cron, no scheduler — the first
+ *      visitor after close (usually an entrant checking) triggers the
+ *      settlement, the winner email fires, and the verify page fills
+ *      in. A giveaway can no longer sit closed and unresolved because
+ *      nobody clicked a button.
+ * Returns the updated doc, or null when there's nothing to draw
+ * (no entries) — that raffle stays 'closed', honestly unresolved.
+ */
+async function performDraw(r: RaffleDoc): Promise<RaffleDoc | null> {
+  if (r.drawnAt) return r;
   const entries = await entriesOf(r.raffleId);
-  if (entries.length === 0) {
-    res.status(409).json({ error: "no confirmed entries to draw from" });
-    return;
-  }
-  const beacon = await beaconAfterClose(r.closesAt);
+  if (entries.length === 0) return null;
+  const beacon = await beaconAfterClose(effectiveClose(r));
   const tickets = entries.map((e) => e.ticketId);
   const { merkleRoot, winners } = computeDraw(r.secret, beacon.value, tickets, r.winners);
 
@@ -443,7 +446,92 @@ raffles.post("/api/raffles/:id/draw", requireUser, wrap(async (req, res) => {
       })).catch((err) => console.warn(`[links] winner email failed: ${err instanceof Error ? err.message : err}`));
     }
   }
-  res.json({ raffle: publicView(next, entries.length) });
+  return next;
+}
+
+/** Lazy settlement: closed + undrawn + has entries → draw NOW. */
+async function settleIfDue(r: RaffleDoc): Promise<RaffleDoc> {
+  if (state(r) !== "closed") return r;
+  try {
+    const drawn = await performDraw(r);
+    return drawn ?? r;
+  } catch (err) {
+    // A failed auto-draw (e.g. beacon hiccup) never breaks a page view;
+    // the next view retries.
+    console.warn(`[links] auto-draw failed for ${r.raffleId}: ${err instanceof Error ? err.message : err}`);
+    return r;
+  }
+}
+
+/** POST /api/raffles/:id/draw — owner, after close. Idempotent. */
+raffles.post("/api/raffles/:id/draw", requireUser, wrap(async (req, res) => {
+  const auth = authOf(res);
+  if (!auth) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const r = await getRaffle(String(req.params.id));
+  if (!r) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  if (!(await hasRole(r.identityId, auth, "editor"))) {
+    res.status(403).json({ error: "only the page owner draws" });
+    return;
+  }
+  if (r.drawnAt) {
+    const entries = await entriesOf(r.raffleId);
+    res.json({ raffle: publicView(r, entries.length), already: true });
+    return;
+  }
+  if (state(r) !== "closed") {
+    res.status(409).json({ error: "entries are still open — the draw waits for close" });
+    return;
+  }
+  const drawn = await performDraw(r);
+  if (!drawn) {
+    res.status(409).json({ error: "no confirmed entries to draw from" });
+    return;
+  }
+  const entries = await entriesOf(r.raffleId);
+  res.json({ raffle: publicView(drawn, entries.length) });
+}));
+
+/** POST /api/raffles/:id/end — the owner ends entries NOW, at will,
+ *  and the draw settles in the same motion (when entries exist).
+ *  Ending early only ever REDUCES the entry window — the beacon
+ *  anchors to the early close, so timing can't cherry-pick a winner. */
+raffles.post("/api/raffles/:id/end", requireUser, wrap(async (req, res) => {
+  const auth = authOf(res);
+  if (!auth) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const r = await getRaffle(String(req.params.id));
+  if (!r) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  if (!(await hasRole(r.identityId, auth, "editor"))) {
+    res.status(403).json({ error: "only the page owner ends a giveaway" });
+    return;
+  }
+  if (r.drawnAt) {
+    const entries = await entriesOf(r.raffleId);
+    res.json({ raffle: publicView(r, entries.length), already: true });
+    return;
+  }
+  let current = r;
+  if (state(r) === "open") {
+    current = { ...r, closedEarlyAt: new Date().toISOString() };
+    await db.put(COLLECTIONS.raffles, r.raffleId, current as unknown as Record<string, unknown>, {
+      causedBy: causalParent(r as unknown as Record<string, unknown>),
+      evidence: `giveaway ended early by owner`,
+    });
+  }
+  const drawn = await performDraw(current);
+  const entries = await entriesOf(r.raffleId);
+  res.json({ raffle: publicView(drawn ?? current, entries.length), drew: Boolean(drawn) });
 }));
 
 /** GET /api/raffles/:id/leads — owner only. The lead-gen payoff.
@@ -625,14 +713,15 @@ ${config.faviconUrl ? `<link rel="icon" href="${esc(config.faviconUrl)}" />` : "
 
 /** GET /r/:id — the giveaway page: state + entry form, zero JS. */
 raffles.get("/r/:id", wrap(async (req, res, next) => {
-  const r = await getRaffle(String(req.params.id));
+  let r = await getRaffle(String(req.params.id));
   if (!r) {
     next();
     return;
   }
+  r = await settleIfDue(r); // the first visitor after close settles the draw
   const entries = await entriesOf(r.raffleId);
   const st = state(r);
-  const closes = new Date(r.closesAt).toUTCString();
+  const closes = new Date(effectiveClose(r)).toUTCString();
   let body = `<h1>${esc(r.prize)}</h1>
 <p class="sub">A giveaway by <a href="/${esc(r.handle)}">@${esc(r.handle)}</a> · ${entries.length} entered · ${
     st === "open" ? `closes ${esc(closes)}` : st === "closed" ? "closed — draw pending" : "winner drawn"
@@ -788,17 +877,18 @@ raffles.post("/r/:id/confirm", wrap(async (req, res) => {
 <div class="card"><div class="win mono">${esc(entry.ticketId)}</div>
 <p class="fine">Keep this id — it's your public, anonymous stake in the draw. The winner is computed
 against a public randomness beacon; <a href="/r/${esc(r.raffleId)}/verify">anyone can verify</a>.
-Drawing ${esc(new Date(r.closesAt).toUTCString())}.</p></div>`));
+Drawing ${esc(new Date(effectiveClose(r)).toUTCString())}.</p></div>`));
 }));
 
 /** GET /r/:id/verify — the recompute trail. If the live recompute ever
  *  disagrees with the recorded draw, this page says so in red. */
 raffles.get("/r/:id/verify", wrap(async (req, res, next) => {
-  const r = await getRaffle(String(req.params.id));
+  let r = await getRaffle(String(req.params.id));
   if (!r) {
     next();
     return;
   }
+  r = await settleIfDue(r);
   const entries = await entriesOf(r.raffleId);
   const tickets = entries.map((e) => e.ticketId).sort();
   let body = `<h1>Verify this draw</h1>
@@ -806,7 +896,7 @@ raffles.get("/r/:id/verify", wrap(async (req, res, next) => {
 <div class="card"><div class="kv">
 <div><b>Prize</b><span>${esc(r.prize)}</span></div>
 <div><b>Commitment (published before entries opened)</b><span class="mono">${esc(r.commitment)}</span></div>
-<div><b>Entries close</b><span>${esc(new Date(r.closesAt).toUTCString())}</span></div>
+<div><b>Entries close</b><span>${esc(new Date(effectiveClose(r)).toUTCString())}${r.closedEarlyAt ? " — ended early by the owner" : ""}</span></div>
 <div><b>Confirmed tickets (${tickets.length})</b><span class="mono">${tickets.map(esc).join(" · ") || "—"}</span></div>
 </div></div>`;
 

@@ -280,3 +280,82 @@ test("the zero-JS entry form: real url-encoded POSTs, not JSON — this is what 
   };
   assert.ok(leads.leads.some((l) => l.email === "dana@probe.test" && l.ticketId === ticketMatch![1]), "the form-submitted entry is the SAME record the owner sees");
 });
+
+// ── End-at-will + auto-draw: nothing stays unresolved ────────────────────────
+
+test("end & draw now: the owner stops entries at will and the winner settles in the same motion", async () => {
+  const closesAt = new Date(Date.now() + 3600_000).toISOString(); // an hour away
+  const put = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", authorization: `Bearer ${session}` },
+    body: JSON.stringify({
+      blocks: [
+        { id: "blk_gv3", type: "giveaway", order: 0, data: { prize: "End-at-will prize", closesAt, winners: 1 } },
+      ],
+    }),
+  });
+  assert.equal(put.status, 200);
+  const rid = ((await put.json()) as { manifest: { blocks: Array<{ data: { raffleId?: string } }> } })
+    .manifest.blocks[0].data.raffleId ?? "";
+
+  // One verified entrant.
+  const e = await post(`/api/raffles/${rid}/enter`, { name: "Willa", phone: "+1 407 555 0200", email: "willa@probe.test" });
+  const pendingId = ((await e.json()) as { pendingId: string }).pendingId;
+  const c = await post(`/api/raffles/${rid}/confirm`, { pendingId, code: codeFor("willa@probe.test") });
+  assert.equal(c.status, 201);
+
+  // A stranger can't end it.
+  const stranger = await post(`/api/raffles/${rid}/end`);
+  assert.equal(stranger.status, 401);
+
+  // The owner ends it — an HOUR early — and the draw settles instantly.
+  const end = await post(`/api/raffles/${rid}/end`, undefined, session);
+  assert.equal(end.status, 200);
+  const ended = ((await end.json()) as { raffle: Record<string, unknown>; drew: boolean });
+  assert.equal(ended.drew, true, "ending open entries draws in the same motion");
+  assert.equal(ended.raffle.state, "drawn");
+  assert.ok(ended.raffle.closedEarlyAt, "the early end is recorded");
+  assert.equal((ended.raffle.winnerTicketIds as string[]).length, 1);
+
+  // The winner email fired automatically — no extra clicks anywhere.
+  const mail = lastMailTo("willa@probe.test");
+  assert.ok(mail.includes("won"), "winner notified in the same motion");
+
+  // The verify page labels the early end honestly.
+  const verify = await (await fetch(`${base}/r/${rid}/verify`)).text();
+  assert.ok(verify.includes("ended early by the owner"), "early end disclosed on the public record");
+  assert.ok(verify.includes("recompute matches the recorded draw"), "and the math still checks");
+});
+
+test("lazy auto-draw: a closed giveaway settles itself on the first view — no clicks, winner emailed", async () => {
+  const closesAt = new Date(Date.now() + 2000).toISOString(); // closes in 2s
+  const put = await fetch(`${base}/api/identities/${identityId}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", authorization: `Bearer ${session}` },
+    body: JSON.stringify({
+      blocks: [
+        { id: "blk_gv4", type: "giveaway", order: 0, data: { prize: "Auto-draw prize", closesAt, winners: 1 } },
+      ],
+    }),
+  });
+  assert.equal(put.status, 200);
+  const rid = ((await put.json()) as { manifest: { blocks: Array<{ data: { raffleId?: string } }> } })
+    .manifest.blocks[0].data.raffleId ?? "";
+
+  const e = await post(`/api/raffles/${rid}/enter`, { name: "Otto", phone: "+1 407 555 0300", email: "otto@probe.test" });
+  const pendingId = ((await e.json()) as { pendingId: string }).pendingId;
+  const c = await post(`/api/raffles/${rid}/confirm`, { pendingId, code: codeFor("otto@probe.test") });
+  assert.equal(c.status, 201);
+
+  await new Promise((r) => setTimeout(r, 2400)); // let it close by clock
+
+  // NOBODY clicks anything. A plain public page view settles the draw.
+  const page = await (await fetch(`${base}/r/${rid}`)).text();
+  assert.ok(page.includes("Winning ticket"), "the first view after close settles the draw");
+
+  const j = (await (await fetch(`${base}/api/raffles/${rid}`)).json()) as { raffle: { state: string } };
+  assert.equal(j.raffle.state, "drawn");
+
+  const mail = lastMailTo("otto@probe.test");
+  assert.ok(mail.includes("won"), "winner emailed automatically, zero human clicks");
+});

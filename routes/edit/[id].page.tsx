@@ -36,6 +36,7 @@ import { ApiError, adminHeaders, fetchPreviewHtml, getJson, postJson, putJson } 
 import type { BackgroundConfig } from "../../src/lib/background";
 import { dragTarget, moveItem, siblingShift } from "../../src/lib/dragReorder";
 import { requestUpgrade } from "../../src/lib/upgrade";
+import { useBillingStatus } from "../../src/lib/useBillingStatus";
 import { BRAND_IDS, SOC_PREFIX, brandGlyph } from "../../src/lib/renderers/social-icons";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest, type IdentityType } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
@@ -281,6 +282,22 @@ function GiveawayFields({
     }
   }, [rid, refresh]);
 
+  const endNow = useCallback(async () => {
+    if (!rid) return;
+    // A real, irreversible action deserves a real question.
+    if (!window.confirm("End this giveaway now? Entries stop immediately and the winner is drawn on the spot. This can't be undone.")) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await postJson(`/api/raffles/${encodeURIComponent(rid)}/end`);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "end failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [rid, refresh]);
+
   const downloadLeads = useCallback(async () => {
     if (!rid) return;
     setErr(null);
@@ -413,6 +430,11 @@ function GiveawayFields({
               <button onClick={() => void downloadLeads()} className="btn btn-secondary !py-1 !px-2.5 !text-[11px]">
                 Leads CSV
               </button>
+              {info?.state === "open" && (
+                <button onClick={() => void endNow()} disabled={busy} className="btn btn-primary !py-1 !px-3 !text-[11px]" title="Stop entries immediately and draw the winner on the spot">
+                  {busy ? "Ending…" : "End & draw now"}
+                </button>
+              )}
               {info?.state === "closed" && (
                 <button onClick={() => void draw()} disabled={busy} className="btn btn-primary !py-1 !px-3 !text-[11px]">
                   {busy ? "Drawing…" : "Draw winners"}
@@ -583,6 +605,14 @@ export default function EditPage(): React.ReactElement {
   const [locked, setLocked] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [addOpen, setAddOpen] = useState(false);
+  // The block cap: free pages hold freeBlockLimit blocks (all types).
+  // Billing status makes the Add button honest — at the cap it opens
+  // the upgrade pitch instead of silently letting a save fail later.
+  const { status: billing } = useBillingStatus();
+  const blockCap =
+    billing && billing.limitEnabled && !billing.unlimited
+      ? ((billing as { freeBlockLimit?: number }).freeBlockLimit ?? 3)
+      : null;
   /** Hover try-on for backgrounds — previewed, never saved. */
   const [bgHover, setBgHover] = useState<BackgroundConfig | null>(null);
   const previewSeq = useRef(0);
@@ -1135,13 +1165,25 @@ export default function EditPage(): React.ReactElement {
                   );
                 })}
 
-                {/* Add block */}
+                {/* Add block — at the free cap this button IS the
+                    upgrade pitch, not a path to a failing save. */}
                 <div className="relative">
                   <button
-                    onClick={() => setAddOpen((v) => !v)}
+                    onClick={() => {
+                      if (blockCap !== null && ordered.length >= blockCap) {
+                        requestUpgrade("blocks");
+                        return;
+                      }
+                      setAddOpen((v) => !v);
+                    }}
                     className="w-full rounded-2xl border border-dashed border-ink-700 text-fg-muted font-semibold text-sm py-4 hover:border-accent/50 hover:text-accent-soft transition inline-flex items-center justify-center gap-2"
                   >
                     <Plus size={16} /> Add block
+                    {blockCap !== null && (
+                      <span className={`chip !text-[10px] ${ordered.length >= blockCap ? "text-signal-amber border-signal-amber/40" : "text-fg-subtle"}`}>
+                        {Math.min(ordered.length, blockCap)}/{blockCap} free
+                      </span>
+                    )}
                   </button>
                   {addOpen && (
                     <div className="absolute z-10 mt-2 w-full panel p-2 grid gap-1 shadow-card-hover">

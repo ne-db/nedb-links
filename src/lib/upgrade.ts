@@ -6,7 +6,7 @@
  * doorway everywhere.
  */
 
-export type UpgradeReason = "giveaway" | "discover" | "font" | "limit" | "generic";
+export type UpgradeReason = "giveaway" | "discover" | "font" | "blocks" | "limit" | "generic";
 
 const EVENT = "links:upgrade";
 
