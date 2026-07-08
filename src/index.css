@@ -479,6 +479,22 @@ html.theme-fade *::after {
     .upgrade-ring::before, .upgrade-ring::after { animation: none; }
   }
 
+  /* Themed scrollbar for the modal's scroll container — a thin accent
+     rail instead of the OS-default gray chrome, in every engine. */
+  .modal-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--accent) / 0.4) transparent;
+  }
+  .modal-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+  .modal-scroll::-webkit-scrollbar-thumb {
+    background: rgb(var(--accent) / 0.35);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .modal-scroll::-webkit-scrollbar-thumb:hover { background: rgb(var(--accent) / 0.6); }
+
   /* The lifted card — riding the pointer above its siblings. */
   .drag-lift {
     box-shadow: 0 4px 10px rgb(0 0 0 / 0.1), 0 22px 44px -12px rgb(0 0 0 / 0.4);

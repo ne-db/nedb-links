@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Gift, Infinity as InfinityIcon, Search, Type, X } from "lucide-react";
 
 import { useAppConfig } from "../lib/useAppConfig";
@@ -47,64 +48,83 @@ export function UpgradeModal(): React.ReactElement | null {
   if (!reason) return null;
   const [title, sub] = HEADLINES[reason];
 
-  return (
+  const modal = (
+    // The OUTER element is the scroll container (not the ring). This is
+    // the robust modal pattern: a flex row taller than the viewport
+    // simply grows the scrollable content, so overflow is reachable
+    // symmetrically top AND bottom. Centering a shorter-than-viewport
+    // panel with pure flex (no inner scroll) clips unreachable content
+    // above y:0 the moment it overflows — this avoids that trap.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 overflow-y-auto modal-scroll bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={() => setReason(null)}
     >
-      <div
-        className="upgrade-ring w-full max-w-lg max-h-[90dvh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <div className="relative bg-ink-900 rounded-[18px] p-6 sm:p-8">
-          <button
-            onClick={() => setReason(null)}
-            className="icon-btn absolute top-3 right-3"
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
+      <div className="min-h-full flex items-center justify-center p-4">
+        <div
+          className="upgrade-ring w-full max-w-lg"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+        >
+          <div className="relative bg-ink-900 rounded-[18px] p-6 sm:p-8">
+            <button
+              onClick={() => setReason(null)}
+              className="icon-btn absolute top-3 right-3"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
 
-          <div className="text-center">
-            {cfg?.brandLogoUrl ? (
-              <img src={cfg.brandLogoUrl} alt="" className="h-14 w-14 mx-auto object-contain" />
-            ) : (
-              <span className="text-4xl text-accent">⬡</span>
-            )}
-            <p className="kicker mt-3">premium</p>
-            <h2 className="font-display text-2xl font-bold mt-1">{title}</h2>
-            <p className="text-fg-muted text-sm mt-2">{sub}</p>
+            <div className="text-center">
+              {cfg?.brandLogoUrl ? (
+                <img src={cfg.brandLogoUrl} alt="" className="h-14 w-14 mx-auto object-contain" />
+              ) : (
+                <span className="text-4xl text-accent">⬡</span>
+              )}
+              <p className="kicker mt-3">premium</p>
+              <h2 className="font-display text-2xl font-bold mt-1">{title}</h2>
+              <p className="text-fg-muted text-sm mt-2">{sub}</p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-2.5">
+              {PERKS.map(({ icon: Icon, label, sub: perkSub }) => (
+                <div key={label} className="rounded-xl bg-ink-850 border border-ink-800 px-3.5 py-3 flex items-start gap-2.5">
+                  <span className="w-7 h-7 rounded-lg bg-accent/10 text-accent-soft inline-flex items-center justify-center shrink-0">
+                    <Icon size={14} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-semibold leading-tight">{label}</span>
+                    <span className="block text-[10.5px] text-fg-subtle mt-0.5">{perkSub}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <UpgradeCard onUnlocked={() => setReason(null)} />
+            </div>
+
+            <button
+              onClick={() => setReason(null)}
+              className="block mx-auto mt-4 text-xs font-medium text-fg-subtle hover:text-fg transition"
+            >
+              maybe later
+            </button>
           </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-2.5">
-            {PERKS.map(({ icon: Icon, label, sub: perkSub }) => (
-              <div key={label} className="rounded-xl bg-ink-850 border border-ink-800 px-3.5 py-3 flex items-start gap-2.5">
-                <span className="w-7 h-7 rounded-lg bg-accent/10 text-accent-soft inline-flex items-center justify-center shrink-0">
-                  <Icon size={14} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[12.5px] font-semibold leading-tight">{label}</span>
-                  <span className="block text-[10.5px] text-fg-subtle mt-0.5">{perkSub}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6">
-            <UpgradeCard onUnlocked={() => setReason(null)} />
-          </div>
-
-          <button
-            onClick={() => setReason(null)}
-            className="block mx-auto mt-4 text-xs font-medium text-fg-subtle hover:text-fg transition"
-          >
-            maybe later
-          </button>
         </div>
       </div>
     </div>
   );
+
+  // A portal straight to <body> — escaping Nav's own box entirely. Nav
+  // carries backdrop-blur, and per spec, filter/backdrop-filter on an
+  // ancestor establishes a new containing block for position:fixed
+  // descendants. Rendered as Nav's child, this modal was "fixed"
+  // relative to the ~56px nav strip, not the viewport — which is
+  // exactly why it rendered pinned near the top with stray scrollbars
+  // instead of centered on screen. The portal makes containment a
+  // non-issue: this DOM node is a body-level sibling, so fixed means
+  // fixed-to-viewport again, no matter what any ancestor does with CSS.
+  return createPortal(modal, document.body);
 }
