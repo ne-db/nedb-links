@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Nav } from "../src/components/Nav";
 import { Footer } from "../src/components/Footer";
 import { setSession } from "../src/lib/api";
+import { greetingName, markWelcome } from "../src/lib/welcome";
 
 export const intent = {
   purpose: "Email confirmation landing — redeems the verify token and signs the user in",
@@ -53,6 +54,13 @@ export default function VerifyPage(): React.ReactElement {
           return;
         }
         setSession(j.token, j.address ?? "", j.email);
+        // A confirmed email is the account's FIRST session — you only
+        // arrive somewhere once, so this says "Welcome to", not back.
+        // Marked AFTER setSession on purpose: this page navigates away,
+        // so the mark must survive to greet on the destination — unlike
+        // the same-page gates, which mark before so the session event
+        // carries the toast immediately.
+        markWelcome("new", greetingName(j.email ?? null, j.address ?? null));
         setState("done");
         setTimeout(() => {
           window.location.href = "/";

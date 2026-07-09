@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Nav } from "../src/components/Nav";
 import { Footer } from "../src/components/Footer";
 import { setSession } from "../src/lib/api";
+import { greetingName, markWelcome } from "../src/lib/welcome";
 
 export const intent = {
   purpose: "Magic sign-in landing — redeems the emailed link token and starts the session",
@@ -51,6 +52,9 @@ export default function MagicPage(): React.ReactElement {
           return;
         }
         setSession(j.token, j.address ?? "", j.email);
+        // Marked AFTER setSession — this page navigates to /identities,
+        // so the mark must survive to greet there (see verify.page.tsx).
+        markWelcome("back", greetingName(j.email ?? null, j.address ?? null));
         setState("done");
         setTimeout(() => {
           window.location.href = "/identities";

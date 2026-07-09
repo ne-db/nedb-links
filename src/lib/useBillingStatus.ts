@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getJson, getToken } from "./api";
+import { getJson, getToken, onSessionChanged } from "./api";
 
 /**
  * The one billing-status contract — Nav's badge, the upgrade modal,
@@ -74,9 +74,11 @@ export function useBillingStatus(): {
     refresh();
     window.addEventListener(EVENT, refresh);
     window.addEventListener("storage", refresh); // token changed in another tab
+    const offSession = onSessionChanged(refresh); // sign-in/out in THIS tab
     return () => {
       window.removeEventListener(EVENT, refresh);
       window.removeEventListener("storage", refresh);
+      offSession();
     };
   }, [refresh]);
 

@@ -25,7 +25,7 @@ import { getBlock, getTemplate, manifestCapabilities } from "../lib/registry";
 import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
 import { maybeSendPublishedEmail } from "./accounts-email";
-import { authOf, requireUser } from "./auth";
+import { authOf, requireUser, type AuthContext } from "./auth";
 import { unlimitedStatus } from "./billing";
 import { createRaffleForBlock, getRaffle } from "./raffles";
 import { canClaimAnother } from "./billing";
@@ -239,6 +239,24 @@ identities.post("/", requireUser, wrap(async (req, res) => {
   res.status(201).json({ manifest, seq: put.seq, head: put.head });
 }));
 
+/** Every manifest this principal can see, newest first — the operator
+ *  sees the whole instance, everyone else their grant set. Shared by
+ *  the identities list and the analytics account rollup, so "what's
+ *  mine" can never mean two different things. */
+export async function listVisibleManifests(auth: AuthContext): Promise<IdentityManifest[]> {
+  if (auth.isOperator) {
+    const rows = await db.query(
+      `FROM ${COLLECTIONS.identities} ORDER BY updatedAt DESC LIMIT 500`,
+    );
+    return rows as unknown as IdentityManifest[];
+  }
+  const mine = await grantsOf(auth.address);
+  const loaded = await Promise.all(mine.map((g) => getManifest(g.identityId)));
+  return loaded
+    .filter((m): m is IdentityManifest => m !== null)
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
 /** GET /api/identities — every identity this instance owns, newest first.
  *  Summaries only; the editor loads full manifests by id. */
 identities.get("/", requireUser, wrap(async (_req, res) => {
@@ -247,19 +265,7 @@ identities.get("/", requireUser, wrap(async (_req, res) => {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
-  let manifests: IdentityManifest[];
-  if (auth.isOperator) {
-    const rows = await db.query(
-      `FROM ${COLLECTIONS.identities} ORDER BY updatedAt DESC LIMIT 500`,
-    );
-    manifests = rows as unknown as IdentityManifest[];
-  } else {
-    const mine = await grantsOf(auth.address);
-    const loaded = await Promise.all(mine.map((g) => getManifest(g.identityId)));
-    manifests = loaded
-      .filter((m): m is IdentityManifest => m !== null)
-      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-  }
+  const manifests = await listVisibleManifests(auth);
   const list = manifests.map((m) => ({
     identityId: m.identityId,
     handle: m.handle,

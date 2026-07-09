@@ -24,10 +24,11 @@ import { COLLECTIONS, type IdentityManifest } from "../lib/identity";
 import { authOf, requireUser } from "./auth";
 import { db } from "./db";
 import { hasRole } from "./grants";
-import { getManifest } from "./identities";
+import { getManifest, listVisibleManifests } from "./identities";
 import { wrap } from "./util";
 
 export const analytics = Router({ mergeParams: true });
+export const analyticsSummary = Router();
 
 /** identityIds are ours (idn_ + hex) — validate before NQL interpolation.
  *  Defense in depth: no quoting gymnastics, just a strict format gate. */
@@ -193,6 +194,71 @@ analytics.get("/", requireUser, wrap(async (req, res) => {
       ...blockLabel(manifest, key),
       count,
     })),
+    asOf: new Date().toISOString(),
+  });
+}));
+
+/** Rollup breadth cap — the signed-in strip is a glance, not a report.
+ *  Operators with huge instances still get a truthful (top-50 by
+ *  recency) strip; the per-identity dashboard remains exact. */
+const SUMMARY_CAP = 50;
+
+/**
+ * GET /api/analytics/summary — the whole portfolio in one response.
+ *
+ * Powers the signed-in strip under the nav and the identities
+ * dashboard header: totals across every identity this principal can
+ * see, with per-identity numbers riding along so the dashboard never
+ * fans out N client calls. Same live GROUP BYs as the per-identity
+ * endpoint — nothing precomputed here either.
+ */
+analyticsSummary.get("/summary", requireUser, wrap(async (_req, res) => {
+  const auth = authOf(res);
+  if (!auth) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const manifests = (await listVisibleManifests(auth))
+    .filter((m) => SAFE_ID.test(m.identityId)) // ours by construction — belt and suspenders before NQL
+    .slice(0, SUMMARY_CAP);
+
+  const perIdentity = await Promise.all(
+    manifests.map(async (m) => {
+      const idWhere = `identityId = '${m.identityId}'`;
+      const [byKind, bySource] = await Promise.all([
+        groupCount(idWhere, "kind"),
+        groupCount(`${idWhere} AND kind = 'profile_view'`, "source"),
+      ]);
+      const kind = (k: string) => byKind.find((r) => r.key === k)?.count ?? 0;
+      const source = (s: string) => bySource.find((r) => r.key === s)?.count ?? 0;
+      return {
+        identityId: m.identityId,
+        handle: m.handle,
+        displayName: m.displayName,
+        status: m.status,
+        views: kind("profile_view"),
+        scans: source("qr"),
+        linkClicks: kind("link_click"),
+        vcardDownloads: kind("vcard_download"),
+      };
+    }),
+  );
+
+  perIdentity.sort((a, b) => b.views - a.views);
+  const sum = (f: (r: (typeof perIdentity)[number]) => number) =>
+    perIdentity.reduce((n, r) => n + f(r), 0);
+
+  res.json({
+    identities: manifests.length,
+    live: manifests.filter((m) => m.status === "published").length,
+    totals: {
+      views: sum((r) => r.views),
+      scans: sum((r) => r.scans),
+      linkClicks: sum((r) => r.linkClicks),
+      vcardDownloads: sum((r) => r.vcardDownloads),
+    },
+    perIdentity,
     asOf: new Date().toISOString(),
   });
 }));

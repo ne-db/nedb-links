@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 
 import { setSession } from "../lib/api";
+import { greetingName, markWelcome } from "../lib/welcome";
 import {
   deriveAccount,
   generatePhrase,
@@ -22,7 +23,7 @@ import {
 
 type Step = "welcome" | "create" | "confirm" | "import" | "signing";
 
-async function loginWithPhrase(phrase: string): Promise<string> {
+async function loginWithPhrase(phrase: string, kind: "new" | "back"): Promise<string> {
   const { address } = await deriveAccount(phrase);
   let chalRes: Response;
   try {
@@ -51,6 +52,9 @@ async function loginWithPhrase(phrase: string): Promise<string> {
     throw new Error(j.error ?? "sign-in failed");
   }
   const session = (await verifyRes.json()) as { token: string };
+  // Mark BEFORE setSession — setSession dispatches the session event,
+  // and the welcome toast reads the mark inside that very dispatch.
+  markWelcome(kind, greetingName(null, address));
   setSession(session.token, address);
   return address;
 }
@@ -90,7 +94,9 @@ export function AccountGate({ onReady }: { onReady: () => void }): React.ReactEl
       setStep("signing");
       setError(null);
       try {
-        const address = await loginWithPhrase(p);
+        // Same discriminator the error path uses: the freshly generated
+        // phrase means a brand-new account; anything else is a return.
+        const address = await loginWithPhrase(p, p === phrase ? "new" : "back");
         // The phrase leaves memory here. Only the session remains.
         setPhrase("");
         setImportText("");
