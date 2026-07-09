@@ -14,6 +14,7 @@ import {
   GripVertical,
   Heading2,
   ImagePlus,
+  Images,
   Link2,
   Palette,
   Play,
@@ -59,6 +60,7 @@ interface SaveReceipt {
 
 const BLOCK_ICONS: Record<string, LucideIcon> = {
   giveaway: Gift,
+  gallery: Images,
   link: Link2,
   header: Heading2,
   text: AlignLeft,
@@ -66,6 +68,10 @@ const BLOCK_ICONS: Record<string, LucideIcon> = {
   embed: Play,
   surfaces: ExternalLink,
 };
+
+/** Block types that need premium — badged in the picker, gated on add
+ *  (the save-time server gate remains the backstop). */
+const PREMIUM_BLOCKS = new Set(["giveaway", "gallery"]);
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
@@ -76,9 +82,13 @@ function blockSummary(b: Block): string {
   const d = b.data;
   switch (b.type) {
     case "giveaway": {
-      if (!str(d.raffleId)) return "saves as a provably fair giveaway";
+      if (!str(d.raffleId)) return "saves as a giveaway with a checkable draw";
       const closed = d.closesAt ? Date.now() >= new Date(str(d.closesAt)).getTime() : false;
       return closed ? "closed — draw when ready" : `open until ${new Date(str(d.closesAt)).toLocaleString()}`;
+    }
+    case "gallery": {
+      const n = Array.isArray(d.images) ? d.images.length : 0;
+      return n ? `${n} photo${n === 1 ? "" : "s"}` : "add your first photo";
     }
     case "link":
       return str(d.url) || "no url yet";
@@ -115,7 +125,156 @@ function blockTitle(b: Block, fallback: string): string {
   }
 }
 
-// ── Per-type block editors (the five built-ins) ──────────────────────────────
+// ── Per-type block editors (the built-ins) ───────────────────────────────────
+
+/**
+ * The gallery editor — Marisa's unlock: "shouldn't we have some photos
+ * to show our work." Upload through the existing pipeline (raw bytes →
+ * /api/upload → hosted url) or paste a URL; caption, reorder, remove.
+ * Empty galleries save fine and render as nothing — the nudge lives
+ * here, not in a save wall.
+ */
+function GalleryFields({
+  block,
+  onChange,
+}: {
+  block: Block;
+  onChange: (data: Record<string, unknown>) => void;
+}): React.ReactElement {
+  const d = block.data;
+  const cfg = useAppConfig();
+  const uploadsOn = Boolean(cfg?.uploads);
+  const images = Array.isArray(d.images)
+    ? (d.images as Array<{ url: string; caption?: string }>)
+    : [];
+  const [urlDraft, setUrlDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const set = (next: Array<{ url: string; caption?: string }>) =>
+    onChange({ ...d, images: next.slice(0, 12) });
+
+  const addUrl = () => {
+    const u = urlDraft.trim();
+    if (!/^https:\/\//.test(u)) {
+      setErr("photo URLs must start with https://");
+      return;
+    }
+    setErr(null);
+    set([...images, { url: u }]);
+    setUrlDraft("");
+  };
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "content-type": file.type || "image/jpeg", ...adminHeaders() },
+        body: file,
+      });
+      const j = (await r.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!r.ok || !j.url) throw new Error(j.error ?? "upload failed");
+      set([...images, { url: j.url }]);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "upload failed");
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const move = (i: number, delta: -1 | 1) => {
+    const j = i + delta;
+    if (j < 0 || j >= images.length) return;
+    const next = [...images];
+    [next[i], next[j]] = [next[j], next[i]];
+    set(next);
+  };
+
+  return (
+    <div className="grid gap-3">
+      {images.length > 0 && (
+        <div className="grid gap-2">
+          {images.map((im, i) => (
+            <div key={`${im.url}-${i}`} className="grid grid-cols-[56px_1fr_auto] gap-2.5 items-center">
+              <img
+                src={im.url}
+                alt=""
+                className="w-14 h-14 rounded-lg object-cover border border-ink-700"
+                loading="lazy"
+              />
+              <input
+                className="field"
+                placeholder="Caption (optional)"
+                maxLength={120}
+                value={im.caption ?? ""}
+                onChange={(e) =>
+                  set(images.map((x, j) => (j === i ? { ...x, caption: e.target.value || undefined } : x)))
+                }
+              />
+              <div className="flex items-center gap-1">
+                <button onClick={() => move(i, -1)} disabled={i === 0} className="icon-btn !w-7 !h-7 disabled:opacity-30" title="Move up">
+                  <ArrowUp size={13} />
+                </button>
+                <button onClick={() => move(i, 1)} disabled={i === images.length - 1} className="icon-btn !w-7 !h-7 disabled:opacity-30" title="Move down">
+                  <ArrowDown size={13} />
+                </button>
+                <button onClick={() => set(images.filter((_, j) => j !== i))} className="icon-btn icon-btn-danger !w-7 !h-7" title="Remove">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {images.length < 12 ? (
+        <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2 items-center">
+          <input
+            className="field"
+            placeholder="https://… photo URL"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addUrl();
+            }}
+          />
+          <button onClick={addUrl} className="btn btn-secondary !py-2">
+            Add photo
+          </button>
+          {uploadsOn && (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void upload(f);
+                }}
+              />
+              <button onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-secondary !py-2 inline-flex items-center gap-1.5">
+                <ImagePlus size={14} /> {busy ? "Uploading…" : "Upload"}
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="text-[11px] text-fg-subtle">A dozen photos is the gallery's cap — quality over quantity.</p>
+      )}
+      {err && <p className="text-signal-red text-xs">{err}</p>}
+      <p className="text-[11px] text-fg-subtle">
+        {images.length === 0
+          ? "Add your best work — visitors swipe through it right on your page."
+          : `${images.length}/12 · visitors swipe through these on your page.`}
+      </p>
+    </div>
+  );
+}
 
 /**
  * The icon picker — tap, don't type. Curated glyphs + emoji that render
@@ -476,6 +635,8 @@ function BlockFields({
   switch (block.type) {
     case "giveaway":
       return <GiveawayFields block={block} onChange={onChange} />;
+    case "gallery":
+      return <GalleryFields block={block} onChange={onChange} />;
     case "link":
       return (
         <div className="grid sm:grid-cols-[1fr_2fr_72px] gap-3">
@@ -967,6 +1128,7 @@ export default function EditPage(): React.ReactElement {
           msg.includes("giveaway") ? "giveaway"
             : msg.includes("discover") ? "discover"
             : msg.includes("font") ? "font"
+            : msg.includes("gallery") ? "gallery"
             : msg.includes("block") ? "blocks"
             : "generic",
         );
@@ -1313,10 +1475,21 @@ export default function EditPage(): React.ReactElement {
                     <div className="absolute z-10 mt-2 w-full panel p-2 grid gap-1 shadow-card-hover">
                       {blockDefs.map((def) => {
                         const Icon = BLOCK_ICONS[def.type] ?? Link2;
+                        // Premium blocks: badge in the picker, and the tap
+                        // IS the upgrade pitch when the wall applies — a
+                        // doorway, never a path to a failing save.
+                        const walled =
+                          PREMIUM_BLOCKS.has(def.type) &&
+                          Boolean(cfg?.limitEnabled && billing && !billing.unlimited);
                         return (
                           <button
                             key={def.type}
                             onClick={() => {
+                              if (walled) {
+                                setAddOpen(false);
+                                requestUpgrade(def.type === "gallery" ? "gallery" : "giveaway");
+                                return;
+                              }
                               setBlocks([...ordered, { id: newBlockId(), type: def.type, order: ordered.length, data: def.defaults() }]);
                               setAddOpen(false);
                             }}
@@ -1325,10 +1498,15 @@ export default function EditPage(): React.ReactElement {
                             <span className="w-8 h-8 rounded-[10px] bg-accent/10 text-accent-soft inline-flex items-center justify-center shrink-0">
                               <Icon size={16} />
                             </span>
-                            <span className="min-w-0">
+                            <span className="min-w-0 flex-1">
                               <span className="block font-semibold text-sm">{def.name}</span>
                               <span className="block text-xs text-fg-subtle truncate">{def.description}</span>
                             </span>
+                            {PREMIUM_BLOCKS.has(def.type) && (
+                              <span className={`chip !text-[10px] shrink-0 ${walled ? "text-accent-soft" : "text-fg-subtle"}`}>
+                                {walled ? "✨ premium" : "premium ✓"}
+                              </span>
+                            )}
                           </button>
                         );
                       })}

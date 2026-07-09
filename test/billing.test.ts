@@ -153,6 +153,33 @@ test("the block cap: templates slice at claim, saves gate at the limit — all b
   assert.match(j.error ?? "", /go premium/i);
 });
 
+test("gallery blocks gate free saves — the doorway names the wall", async () => {
+  // Runs BEFORE the supporter unlock below: this account is still free.
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn);
+  const r = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({
+      blocks: [
+        {
+          id: "blk_gal1",
+          type: "gallery",
+          order: 0,
+          data: { images: [{ url: "https://cdn.example.com/work1.jpg", caption: "Fresh cut" }] },
+        },
+      ],
+    }),
+  });
+  assert.equal(r.status, 403, "galleries are premium");
+  const j = (await r.json()) as { code?: string; error?: string };
+  assert.equal(j.code, "premium_required");
+  assert.match(j.error ?? "", /gallery/i, "the message names the gallery wall");
+});
+
 test("checkout without Stripe answers 503, not a crash", async () => {
   const r = await fetch(`${base}/api/billing/checkout`, {
     method: "POST",
@@ -210,6 +237,41 @@ test("premium lifts the block cap — same page, fourth block welcome", async ()
     body: JSON.stringify({ blocks }),
   });
   assert.equal(r.status, 200, "six blocks save fine once premium");
+});
+
+test("premium unlocks the gallery — Marisa's showcase saves and renders", async () => {
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn);
+  const r = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({
+      blocks: [
+        {
+          id: "blk_gal2",
+          type: "gallery",
+          order: 0,
+          data: {
+            images: [
+              { url: "https://cdn.example.com/work1.jpg", caption: "Balayage" },
+              { url: "https://cdn.example.com/work2.jpg" },
+            ],
+          },
+        },
+      ],
+    }),
+  });
+  assert.equal(r.status, 200, "gallery saves once premium");
+
+  // And the public page actually shows the work.
+  await fetch(`${base}/api/identities/${idn.identityId}/publish`, { method: "POST", headers: authed() });
+  const page = await (await fetch(`${base}/gatefree`)).text();
+  assert.match(page, /class="gal"/, "gallery strip on the public page");
+  assert.match(page, /work1\.jpg/, "the photos render");
+  assert.match(page, /Balayage/, "the caption renders");
 });
 
 test("safeReturnPath: same-origin paths pass, everything shady falls back", async () => {

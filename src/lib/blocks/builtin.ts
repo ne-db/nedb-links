@@ -98,6 +98,28 @@ export const surfacesBlock = defineBlock({
   defaults: () => ({ title: "", vcard: true, qr: true, card: true, md: false, json: false }),
 });
 
+export const galleryBlock = defineBlock({
+  type: "gallery",
+  name: "Gallery",
+  description: "Show your work — a swipeable photo gallery. Premium.",
+  capabilities: ["seo"],
+  schema: z.object({
+    /** Up to a dozen photos; empty galleries save fine and render as
+     *  nothing (the "add at least one" nudge is editor UX, not a save
+     *  wall — a half-built page must always be saveable). */
+    images: z
+      .array(
+        z.object({
+          /** https only — the public page never embeds insecure content. */
+          url: z.string().max(500).regex(/^https:\/\//, "gallery images must be https URLs"),
+          caption: z.string().max(120).optional(),
+        }),
+      )
+      .max(12),
+  }),
+  defaults: () => ({ images: [] }),
+});
+
 export const giveawayBlock = defineBlock({
   type: "giveaway",
   name: "Giveaway",

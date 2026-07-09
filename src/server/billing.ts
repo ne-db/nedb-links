@@ -216,8 +216,8 @@ billing.post("/checkout", requireUser, wrap(async (req, res) => {
             name: `${config.brandName} Premium — pay once`,
             description:
               config.premiumProfileLimit > 0
-                ? `Pay what you want, once. Up to ${config.premiumProfileLimit} profiles, unlimited blocks, giveaways, Discover & the font vault. No subscription, ever.`
-                : "Pay what you want, once. Unlimited blocks, giveaways, Discover & the font vault. No subscription, ever.",
+                ? `Pay what you want, once. Up to ${config.premiumProfileLimit} profiles, unlimited blocks, galleries, giveaways, Discover & the font vault. No subscription, ever.`
+                : "Pay what you want, once. Unlimited blocks, galleries, giveaways, Discover & the font vault. No subscription, ever.",
           },
         },
       },

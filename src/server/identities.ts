@@ -339,6 +339,9 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
     (b) => b.type === "giveaway" && !(b.data as { raffleId?: string }).raffleId,
   );
   const flippingDiscoverOn = patch.data.discoverable === true && current.discoverable !== true;
+  // Galleries are premium (Marisa's unlock, 7/9): gate the block's
+  // presence — premium is one-time-forever, so no grandfather cases.
+  const hasGallery = blocks.some((b) => b.type === "gallery");
   // The block cap: free pages hold freeBlockLimit blocks TOTAL (all
   // types — Mark's call), no grandfathering. Public pages keep
   // rendering whatever exists; only SAVES gate.
@@ -352,7 +355,7 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
         return next && isPremiumFont(next) && next !== current.themeCustom?.[k];
       }),
   );
-  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont || overBlockCap) {
+  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont || hasGallery || overBlockCap) {
     const status = await unlimitedStatus(auth);
     if (!status.unlimited) {
       res.status(403).json({
@@ -362,7 +365,9 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
             ? "Discover listing is a premium feature — upgrade to be found"
             : wantsPremiumFont
               ? "that font is a premium unlock — upgrade to use the full vault"
-              : `free pages hold ${config.freeBlockLimit} blocks — go Premium to keep building`,
+              : hasGallery
+                ? "the gallery is a premium unlock — go Premium to show your work"
+                : `free pages hold ${config.freeBlockLimit} blocks — go Premium to keep building`,
         code: "premium_required",
       });
       return;
