@@ -21,6 +21,7 @@ import { db } from "./db";
 import { grants } from "./grants";
 import { handles, identities } from "./identities";
 import { preview } from "./preview";
+import { demo } from "./demo";
 import { discover } from "./discover";
 import { raffles } from "./raffles";
 import { render } from "./render";
@@ -86,6 +87,11 @@ export function createApp(): Express {
       fiatDoor: Boolean(config.stripeSecretKey),
       limitEnabled: config.limitEnabled,
       uploads: Boolean(config.imgbbKey) || process.env.LINKS_UPLOAD_TEST === "1",
+      // Public policy numbers — the homepage ledger states the deal
+      // with the same figures the gates enforce.
+      freeProfileLimit: config.freeProfileLimit,
+      freeBlockLimit: config.freeBlockLimit,
+      premiumProfileLimit: config.premiumProfileLimit,
     });
   });
 
@@ -149,6 +155,7 @@ export function createApp(): Express {
   // Discover mounts BEFORE /:handle so the directory wins the route.
   app.use(discover);
   app.use(raffles); // /r/:id pages + /api/raffles — before /:handle
+  app.use(demo); // /demo — the homepage's live "what done looks like"
   app.use(render);
 
   // ── SPA fallback ──────────────────────────────────────────────────────────

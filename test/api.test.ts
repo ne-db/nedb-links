@@ -456,3 +456,30 @@ test("the engine verifies the whole database tamper-evident", async () => {
   assert.equal(report.ok, true, "verify ok");
   assert.ok(report.seq > 0);
 });
+
+test("/demo renders the finished page through the real pipeline; routes stay reserved", async () => {
+  const r = await fetch(`${base}/demo`);
+  assert.equal(r.status, 200, "the demo page is public");
+  const html = await r.text();
+  assert.match(html, /Maya Reyes/, "the demo identity renders");
+  assert.match(html, /Save contact/, "the save-my-contact surface is on");
+  assert.match(html, /Book an appointment/, "client-shaped content, not dev-shaped");
+
+  // The routes the app now owns can never be claimed out from under it.
+  for (const h of ["demo", "fair", "terms"]) {
+    const avail = (await (
+      await fetch(`${base}/api/handles/${h}/availability`)
+    ).json()) as { available: boolean };
+    assert.equal(avail.available, false, `'${h}' is reserved`);
+  }
+
+  // The public config carries the policy numbers the homepage ledger states.
+  const cfg = (await (await fetch(`${base}/api/config`)).json()) as {
+    freeProfileLimit: number;
+    freeBlockLimit: number;
+    premiumProfileLimit: number;
+  };
+  assert.ok(cfg.freeProfileLimit >= 1, "free profile limit published");
+  assert.ok(cfg.freeBlockLimit >= 1, "free block limit published");
+  assert.equal(typeof cfg.premiumProfileLimit, "number", "premium ceiling published");
+});

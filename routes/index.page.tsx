@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Contact, Gift, Link2, Palette, QrCode, ShieldCheck, Sparkles } from "lucide-react";
+import { BarChart3, Check, Contact, Crown, Gift, Link2, Palette, QrCode, ShieldCheck, Sparkles } from "lucide-react";
 
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
@@ -500,6 +500,40 @@ export default function ClaimPage(): React.ReactElement {
         </div>
       </section>
 
+      {/* ── What done looks like — the REAL renderer in a phone frame,
+          not a mockup. Mark's call: sell the destination. ── */}
+      <section className="w-full max-w-4xl mt-20">
+        <div className="grid md:grid-cols-2 gap-10 items-center">
+          <div className="text-center md:text-left">
+            <p className="kicker">see one finished</p>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold mt-2">
+              This is what done looks like.
+            </h2>
+            <p className="text-fg-muted mt-3">
+              A real page, rendered live by the exact engine yours will use —
+              booking links, save-my-contact, QR, the whole thing. Not a
+              mockup, not a screenshot.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
+              <a href="#claim" className="btn btn-primary">Start yours</a>
+              <a
+                href="/demo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary"
+              >
+                Open the demo full-size ↗
+              </a>
+            </div>
+          </div>
+          <div className="mx-auto">
+            <div className="phone-frame">
+              <iframe src="/demo" title="A finished page, live" loading="lazy" className="demo-iframe" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="w-full max-w-4xl mt-20">
         <p className="kicker text-center">what you get</p>
         <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mt-2">
@@ -510,7 +544,7 @@ export default function ClaimPage(): React.ReactElement {
             { Icon: Link2, title: "Every link, one page", copy: "Instagram, booking, menu, music — all behind one link you'll never have to change." },
             { Icon: QrCode, title: "Print-grade QR", copy: "Stick it on the counter or the mirror. Scans are counted separately from taps." },
             { Icon: Contact, title: "Save my contact", copy: "Visitors add you to their phone in one tap — name, links, and all." },
-            { Icon: Gift, title: "Giveaways people trust", copy: "Run a giveaway with a winner drawn provably fair — anyone can check the math." },
+            { Icon: Gift, title: "Giveaways people trust", copy: "Run a giveaway anyone can check was honest — every draw on the record." },
             { Icon: BarChart3, title: "Know what works", copy: "Live views, scans, and clicks — see where people found you." },
             { Icon: Palette, title: "Your look", copy: "Themes, gradient backgrounds, and a vault of fonts. Your page, your taste." },
           ].map(({ Icon, title, copy }) => (
@@ -522,6 +556,67 @@ export default function ClaimPage(): React.ReactElement {
               <p className="text-sm text-fg-muted mt-1.5">{copy}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── The deal — free vs premium with the SAME numbers the gates
+          enforce (from /api/config). Mark's call: sell what they GET. ── */}
+      <section className="w-full max-w-4xl mt-20">
+        <p className="kicker text-center">the deal</p>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mt-2">
+          Free is a full thing. Premium is forever.
+        </h2>
+        <div className="mt-10 grid md:grid-cols-2 gap-4 items-stretch">
+          <div className="panel p-6">
+            <p className="font-display font-bold text-lg">Free, forever</p>
+            <p className="text-sm text-fg-muted mt-1">No card. No trial clock. A complete page, not a teaser.</p>
+            <ul className="mt-5 grid gap-2.5 text-sm">
+              {[
+                "Your handle and your page",
+                `A full page — ${cfg?.freeBlockLimit ?? 3} blocks of any kind`,
+                "Every theme and gradient background",
+                "Print-grade QR code",
+                "Save-my-contact for visitors",
+                "Live stats — views, scans, clicks",
+              ].map((li) => (
+                <li key={li} className="flex items-start gap-2.5">
+                  <Check size={15} className="text-signal-green shrink-0 mt-0.5" strokeWidth={3} />
+                  <span className="text-fg-muted">{li}</span>
+                </li>
+              ))}
+            </ul>
+            <a href="#claim" className="btn btn-secondary w-full !py-2.5 mt-6">Claim yours free</a>
+          </div>
+          <div className="panel p-6 !border-accent/40 relative overflow-hidden">
+            <span className="absolute top-4 right-4 chip text-[10px] font-bold uppercase tracking-wider text-accent-soft">pay once</span>
+            <p className="font-display font-bold text-lg inline-flex items-center gap-2">
+              <Crown size={16} className="text-accent-soft" /> Premium
+            </p>
+            <p className="text-sm text-fg-muted mt-1">
+              Whatever it's worth to you, one time. <b className="text-fg">No subscription. Ever.</b>
+            </p>
+            <ul className="mt-5 grid gap-2.5 text-sm">
+              {[
+                "Everything in free",
+                `${cfg?.premiumProfileLimit && cfg.premiumProfileLimit > 0 ? `Up to ${cfg.premiumProfileLimit} profiles` : "More profiles"} — business, personal, next thing`,
+                "Unlimited blocks — build without ceilings",
+                "Giveaways anyone can check were honest",
+                "Listed in Discover — be found on purpose",
+                "The font vault — 38 curated typefaces",
+              ].map((li) => (
+                <li key={li} className="flex items-start gap-2.5">
+                  <Check size={15} className="text-accent-soft shrink-0 mt-0.5" strokeWidth={3} />
+                  <span className="text-fg-muted">{li}</span>
+                </li>
+              ))}
+            </ul>
+            <a href="#claim" className="btn btn-primary w-full !py-2.5 mt-6">Start free — upgrade when ready</a>
+            {!emailMode && (
+              <p className="mt-3 text-[11px] text-fg-subtle text-center">
+                Or hold ITC on your account — the sovereign door. Self-hosting? Your instance runs uncapped, GPLv3.
+              </p>
+            )}
+          </div>
         </div>
       </section>
 

@@ -596,3 +596,21 @@ html.theme-fade *::after {
     transform: translateY(0) scale(1);
   }
 }
+
+/* ── Homepage demo phone — the real renderer, framed ─────────────────── */
+.phone-frame {
+  width: 250px;
+  height: 520px;
+  border-radius: 36px;
+  border: 6px solid rgb(0 0 0 / 0.7);
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
+  background: #000;
+}
+.demo-iframe {
+  width: 390px;
+  height: 812px;
+  transform: scale(0.641);
+  transform-origin: top left;
+  border: 0;
+}

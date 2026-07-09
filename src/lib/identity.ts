@@ -212,6 +212,7 @@ export const RESERVED_HANDLES = new Set([
   "health", "docs", "about", "settings", "login", "logout", "favicon",
   "robots", "sitemap", "index", "links", "nedb", "analytics", "identities",
   "verify", "reset", "magic", "discover", "discovery", "r", "brand",
+  "demo", "fair", "terms",
 ]);
 
 /** Handles are lowercase, 2-40 chars, alphanumeric plus inner hyphens. */

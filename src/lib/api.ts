@@ -19,6 +19,11 @@ export interface AppConfig {
   fiatDoor: boolean;
   limitEnabled: boolean;
   uploads: boolean;
+  /** Public policy numbers — the homepage ledger states the deal with
+   *  the same figures the gates enforce. Optional: older servers. */
+  freeProfileLimit?: number;
+  freeBlockLimit?: number;
+  premiumProfileLimit?: number;
 }
 
 let appConfig: AppConfig | null = null;
