@@ -35,3 +35,31 @@ test("clampPan: bounded, zoom widens the range", () => {
   assert.equal(clampPan(0.8, 2), 0.8, "zoomed in allows wider pan");
   assert.equal(clampPan(9, 2), 1, "still bounded");
 });
+
+test("rect stages: cover fills + pans within overflow, contain letterboxes centered", async () => {
+  const { layoutCoverRect, layoutContainRect, coverOverflow } = await import("../src/lib/logoLayout");
+
+  // A wide image in a portrait stage: cover scales to fill HEIGHT.
+  const c = layoutCoverRect(2000, 1000, 300, 533, 1, 0, 0);
+  assert.ok(c.dh >= 533 - 0.5, "covers the stage height");
+  assert.ok(c.dw >= 300, "width overflows for panning");
+  assert.ok(Math.abs(c.dx + (c.dw - 300) / 2) < 0.5, "pan 0 centers the overflow");
+
+  // Pan to the edges pins the image, never past it.
+  const left = layoutCoverRect(2000, 1000, 300, 533, 1, -1, 0);
+  assert.ok(Math.abs(left.dx - (300 - left.dw)) < 0.5, "pan -1 pins the trailing edge");
+  const right = layoutCoverRect(2000, 1000, 300, 533, 1, 1, 0);
+  assert.ok(Math.abs(right.dx) < 0.5, "pan 1 pins the leading edge");
+  const over = layoutCoverRect(2000, 1000, 300, 533, 1, 5, 0);
+  assert.ok(Math.abs(over.dx) < 0.5, "pan clamps at the edge");
+
+  // Zoom expands symmetric overflow.
+  const o1 = coverOverflow(2000, 1000, 300, 533, 1);
+  const o2 = coverOverflow(2000, 1000, 300, 533, 2);
+  assert.ok(o2.ox > o1.ox && o2.oy > o1.oy, "zoom grows the pannable range");
+
+  // Contain: whole image visible, centered, never cropped.
+  const f = layoutContainRect(2000, 1000, 300, 533);
+  assert.ok(f.dw <= 300 + 0.5 && f.dh <= 533 + 0.5, "fits inside the stage");
+  assert.ok(Math.abs(f.dx - (300 - f.dw) / 2) < 0.5 && Math.abs(f.dy - (533 - f.dh) / 2) < 0.5, "centered both axes");
+});

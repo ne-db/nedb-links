@@ -42,6 +42,7 @@ import { notifyBillingChanged, useBillingStatus } from "../../src/lib/useBilling
 import { BRAND_IDS, SOC_PREFIX, brandGlyph } from "../../src/lib/renderers/social-icons";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest, type IdentityType } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
+import { ImageStudio } from "../../src/components/ImageStudio";
 import { LogoStudio } from "../../src/components/LogoStudio";
 import { useAppConfig } from "../../src/lib/useAppConfig";
 import { THEMES } from "../../src/lib/renderers/html";
@@ -140,6 +141,10 @@ function SeoPanel({
   walled: boolean;
   onChange: (seo: IdentityManifest["seo"]) => void;
 }): React.ReactElement {
+  const cfg = useAppConfig();
+  const uploadsOn = Boolean(cfg?.uploads);
+  const [shareFile, setShareFile] = useState<File | null>(null);
+  const shareFileRef = useRef<HTMLInputElement | null>(null);
   const seo = manifest.seo ?? {};
   const set = (k: "title" | "description" | "image", v: string): void => {
     if (walled) {
@@ -172,19 +177,60 @@ function SeoPanel({
         </div>
         <div>
           <label className="label flex items-center justify-between">
-            <span>Share image (https URL)</span>
+            <span>Share image</span>
           </label>
-          <input
-            className="field"
-            maxLength={500}
-            value={seo.image ?? ""}
-            placeholder="https://… — the card in chats & socials"
-            onFocus={() => walled && requestUpgrade("seo")}
-            readOnly={walled}
-            onChange={(e) => set("image", e.target.value)}
-          />
+          <div className="flex gap-2">
+            <input
+              className="field flex-1 min-w-0"
+              maxLength={500}
+              value={seo.image ?? ""}
+              placeholder="https://… — the card in chats & socials"
+              onFocus={() => walled && requestUpgrade("seo")}
+              readOnly={walled}
+              onChange={(e) => set("image", e.target.value)}
+            />
+            {uploadsOn && (
+              <>
+                <input
+                  ref={shareFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (walled) requestUpgrade("seo");
+                      else setShareFile(f);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  onClick={() => (walled ? requestUpgrade("seo") : shareFileRef.current?.click())}
+                  className="btn btn-secondary !py-2 shrink-0 inline-flex items-center gap-1.5"
+                  title="Upload and frame a share card (1.91:1)"
+                >
+                  <ImagePlus size={14} /> Upload
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
+      {shareFile && (
+        <ImageStudio
+          file={shareFile}
+          aspect={1.91}
+          exportWidth={1200}
+          title="Frame your share card"
+          cta="Use share image"
+          onDone={(url) => {
+            setShareFile(null);
+            set("image", url);
+          }}
+          onClose={() => setShareFile(null)}
+        />
+      )}
       <div>
         <label className="label flex items-center justify-between">
           <span>Search description</span>

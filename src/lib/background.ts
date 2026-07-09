@@ -41,7 +41,24 @@ export interface GradientBackground {
   preset?: string;
 }
 
-export type BackgroundConfig = SolidBackground | GradientBackground;
+export interface ImageBackground {
+  kind: "image";
+  /** https-only, charset-restricted — the regex IS the CSS-injection
+   *  defense (the hex-only lesson, applied to URLs). */
+  url: string;
+  /** The solid the page "reads as": borders/rings anchor here, page ink
+   *  derives from it, and it backs the scrim + the image while loading. */
+  anchor: string;
+  /** Scrim strength 0–80 (% of anchor laid over the photo) — arbitrary
+   *  photos behind text are unreadable without one. Default 35. */
+  dim?: number;
+}
+
+export type BackgroundConfig = SolidBackground | GradientBackground | ImageBackground;
+
+/** No quotes, parens, backslashes, whitespace, or angle brackets — safe
+ *  to interpolate inside url("…") in a style block. */
+export const BG_URL_RE = /^https:\/\/[^\s"'()\\<>]{1,480}$/;
 
 /** One schema for every server surface — PUT and preview validate identically. */
 export const backgroundSchema = z.discriminatedUnion("kind", [
@@ -57,6 +74,12 @@ export const backgroundSchema = z.discriminatedUnion("kind", [
       .min(MIN_STOPS)
       .max(MAX_STOPS),
     preset: z.string().max(24).optional(),
+  }),
+  z.object({
+    kind: z.literal("image"),
+    url: z.string().regex(BG_URL_RE, "image backgrounds must be clean https URLs"),
+    anchor: z.string().regex(BG_HEX_RE, "anchor must be #rrggbb"),
+    dim: z.number().int().min(0).max(80).optional(),
   }),
 ]);
 
@@ -102,6 +125,15 @@ const DIRECTION_CSS: Record<GradientDirection, string> = {
  *  normalized to lowercase so rendered CSS is byte-stable. */
 export function bgCss(bg: BackgroundConfig): string {
   if (bg.kind === "solid") return bg.color.toLowerCase();
+  if (bg.kind === "image") {
+    // Scrim over photo over anchor — one background value. The scrim is
+    // the readability guarantee (dim% of anchor laid over ANY photo);
+    // the anchor backs the stack while the image loads or fails.
+    const a = bg.anchor.toLowerCase();
+    const dim = Math.max(0, Math.min(80, bg.dim ?? 35));
+    const alpha = toHex((dim / 100) * 255);
+    return `linear-gradient(${a}${alpha},${a}${alpha}),url("${bg.url}") center/cover no-repeat,${a}`;
+  }
   const stops = bg.stops.map((s) => s.toLowerCase()).join(",");
   if (bg.direction === "radial") {
     return `radial-gradient(120% 120% at 50% 0%,${stops})`;
@@ -130,6 +162,7 @@ function toHex(n: number): string {
  */
 export function anchorOf(bg: BackgroundConfig): string {
   if (bg.kind === "solid") return bg.color.toLowerCase();
+  if (bg.kind === "image") return bg.anchor.toLowerCase();
   const sum = bg.stops.reduce(
     (acc, s) => {
       const [r, g, b] = hexChannels(s);

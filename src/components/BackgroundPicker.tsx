@@ -1,17 +1,21 @@
-import React from "react";
-import { Check, Plus, X } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Check, ImagePlus, Plus, X } from "lucide-react";
 
 import {
   BG_PRESETS,
+  BG_URL_RE,
   MAX_STOPS,
   MIN_STOPS,
   bgCss,
   presetBackground,
   GRADIENT_DIRECTIONS,
   type BackgroundConfig,
-  type GradientBackground,
   type GradientDirection,
+  type GradientBackground,
+  type ImageBackground,
 } from "../lib/background";
+import { useAppConfig } from "../lib/useAppConfig";
+import { ImageStudio } from "./ImageStudio";
 
 /**
  * The Background section — visual, not configuration-heavy. Users pick,
@@ -45,18 +49,44 @@ const DEFAULT_CUSTOM: GradientBackground = {
   stops: ["#2563EB", "#06B6D4", "#10B981"],
 };
 
+const DEFAULT_IMAGE: Omit<ImageBackground, "url"> = { kind: "image", anchor: "#0b0f19", dim: 35 };
+
 export function BackgroundPicker({ value, onChange, onHover }: Props): React.ReactElement {
-  const mode: "theme" | "solid" | "gradient" = value?.kind ?? "theme";
+  const cfg = useAppConfig();
+  const uploadsOn = Boolean(cfg?.uploads);
+  // Image mode drafts locally until the URL is real — a half-typed URL
+  // must never reach the manifest (the schema would bounce the save).
+  const [imgDraft, setImgDraft] = useState<ImageBackground | null>(null);
+  const [studioFile, setStudioFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const committedImage = value?.kind === "image" ? value : null;
+  const img = imgDraft ?? committedImage;
+  const imageMode = img !== null;
+  const mode: "theme" | "solid" | "gradient" | "image" = imageMode
+    ? "image"
+    : (value?.kind ?? "theme");
   const isCustom = value?.kind === "gradient" && !value.preset;
 
-  const setMode = (m: "theme" | "solid" | "gradient") => {
+  /** Commit when valid; keep drafting otherwise. */
+  const setImage = (next: ImageBackground) => {
+    setImgDraft(next);
+    if (BG_URL_RE.test(next.url)) onChange(next);
+  };
+
+  const setMode = (m: "theme" | "solid" | "gradient" | "image") => {
     onHover(null);
+    if (m === "image") {
+      setImgDraft(committedImage ?? { ...DEFAULT_IMAGE, url: "" });
+      return;
+    }
+    setImgDraft(null);
     if (m === "theme") onChange(undefined);
     else if (m === "solid") onChange({ kind: "solid", color: "#0F172A" });
     else onChange(presetBackground(BG_PRESETS[0]));
   };
 
-  const seg = (m: "theme" | "solid" | "gradient", label: string) => (
+  const seg = (m: "theme" | "solid" | "gradient" | "image", label: string) => (
     <button
       key={m}
       onClick={() => setMode(m)}
@@ -78,17 +108,12 @@ export function BackgroundPicker({ value, onChange, onHover }: Props): React.Rea
       </div>
 
       <div className="panel p-5 grid gap-4">
-        {/* Mode — Theme default / Solid / Gradient / Image (soon) */}
+        {/* Mode — Theme default / Solid / Gradient / Image */}
         <div className="flex items-center gap-1 flex-wrap">
           {seg("theme", "Theme")}
           {seg("solid", "Solid")}
           {seg("gradient", "Gradient")}
-          <span
-            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-fg-subtle opacity-50 cursor-not-allowed select-none"
-            title="Image backgrounds are coming"
-          >
-            Image <span className="chip !py-0 !px-1.5 !text-[9px] ml-1">soon</span>
-          </span>
+          {seg("image", "Image")}
         </div>
 
         {mode === "theme" && (
@@ -96,6 +121,97 @@ export function BackgroundPicker({ value, onChange, onHover }: Props): React.Rea
             Using your theme's own canvas. Pick Solid or Gradient to override it —
             cards, accents, and type stay with the theme either way.
           </p>
+        )}
+
+        {/* ── Image — a photo canvas with a readability scrim ───────────── */}
+        {mode === "image" && img && (
+          <div className="grid gap-4">
+            <div className="grid sm:grid-cols-[1fr_auto] gap-2 items-center">
+              <input
+                className="field"
+                placeholder="https://… photo URL"
+                value={img.url}
+                onChange={(e) => setImage({ ...img, url: e.target.value.trim() })}
+              />
+              {uploadsOn && (
+                <>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setStudioFile(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button onClick={() => fileRef.current?.click()} className="btn btn-secondary !py-2 inline-flex items-center gap-1.5">
+                    <ImagePlus size={14} /> Upload
+                  </button>
+                </>
+              )}
+            </div>
+            {img.url && !BG_URL_RE.test(img.url) && (
+              <p className="text-xs text-signal-amber">That needs to be a clean https:// image URL.</p>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">
+                  Dim for readability · {img.dim ?? 35}%
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={80}
+                  step={5}
+                  value={img.dim ?? 35}
+                  onChange={(e) => setImage({ ...img, dim: Number(e.target.value) })}
+                  className="w-full accent-[rgb(var(--accent))]"
+                />
+              </div>
+              <div>
+                <label className="label">Page ink</label>
+                <div className="flex rounded-lg border border-ink-700 overflow-hidden w-fit">
+                  {([["#0b0f19", "Light text"], ["#f8fafc", "Dark text"]] as const).map(([a, label]) => (
+                    <button
+                      key={a}
+                      onClick={() => setImage({ ...img, anchor: a })}
+                      className={`px-3 py-1.5 text-xs font-semibold transition ${
+                        img.anchor === a ? "bg-accent/15 text-accent-soft" : "text-fg-muted hover:text-fg"
+                      }`}
+                      title="Sets the scrim tint and whether page text renders light or dark"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {BG_URL_RE.test(img.url) && (
+              <div>
+                <label className="label">Preview (scrim applied)</label>
+                <div className="h-24 rounded-xl border border-ink-700" style={{ background: bgCss(img) }} />
+              </div>
+            )}
+
+            {studioFile && (
+              <ImageStudio
+                file={studioFile}
+                aspect={9 / 16}
+                exportWidth={1080}
+                title="Frame your background"
+                cta="Use background"
+                onDone={(url) => {
+                  setStudioFile(null);
+                  setImage({ ...img, url });
+                }}
+                onClose={() => setStudioFile(null)}
+              />
+            )}
+          </div>
         )}
 
         {/* ── Solid ─────────────────────────────────────────────────────── */}

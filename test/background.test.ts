@@ -110,3 +110,41 @@ test("backgroundSchema: hex-only stops, enum-only direction — CSS injection ha
     assert.equal(backgroundSchema.safeParse(b).success, false, `rejected: ${JSON.stringify(b)}`);
   }
 });
+
+test("image backgrounds: clean https only, scrim stack, anchor contract", () => {
+  // Schema: the URL regex IS the CSS-injection defense.
+  const good = backgroundSchema.safeParse({ kind: "image", url: "https://cdn.example.com/photo.webp", anchor: "#0B0F19", dim: 40 });
+  assert.equal(good.success, true, "clean https image accepted");
+  for (const url of [
+    "http://insecure.example.com/x.jpg",
+    'https://x.example/a").png',
+    "https://x.example/a'b.png",
+    "https://x.example/a b.png",
+    "javascript:alert(1)",
+    `https://x.example/${"a".repeat(500)}`,
+  ]) {
+    assert.equal(
+      backgroundSchema.safeParse({ kind: "image", url, anchor: "#0b0f19" }).success,
+      false,
+      `rejected: ${url.slice(0, 40)}`,
+    );
+  }
+
+  // bgCss: scrim over photo over anchor — one value, dim as alpha hex.
+  const css = bgCss({ kind: "image", url: "https://cdn.example.com/p.webp", anchor: "#0B0F19", dim: 40 });
+  assert.ok(css.startsWith("linear-gradient(#0b0f1966,#0b0f1966),"), "40% scrim tints toward the anchor");
+  assert.ok(css.includes('url("https://cdn.example.com/p.webp") center/cover no-repeat'), "photo covers");
+  assert.ok(css.endsWith(",#0b0f19"), "anchor backs the stack");
+
+  // Defaults + clamps.
+  assert.ok(
+    bgCss({ kind: "image", url: "https://x.example/p.jpg", anchor: "#0b0f19" }).startsWith("linear-gradient(#0b0f1959"),
+    "default dim 35%",
+  );
+
+  // anchorOf: the image's anchor IS the solid stand-in (rings, ink).
+  assert.equal(anchorOf({ kind: "image", url: "https://x.example/p.jpg", anchor: "#F8FAFC" }), "#f8fafc");
+  // Light anchor → dark page ink, same math as every other background.
+  const ink = pageInkOn("#f8fafc");
+  assert.ok(ink.text.startsWith("#0") || ink.text.startsWith("#1"), "light anchor gets dark ink");
+});
