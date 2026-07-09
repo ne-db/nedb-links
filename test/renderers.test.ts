@@ -504,3 +504,29 @@ test("giveaway face = theme CARD surface — readable over light custom canvases
   );
   assert.ok(gvw.includes("conic-gradient(from var(--gvang)"), "the ring survives in the border-box layer");
 });
+
+test("gallery block: swipeable, lazy, escaped, https-only — empty renders nothing", () => {
+  const gal = (images: unknown) =>
+    renderProfileHtml(
+      fixture({ blocks: [{ id: "blk_g", type: "gallery", order: 0, data: { images } as Record<string, unknown> }] }),
+      CTX,
+    );
+  const html = gal([
+    { url: "https://cdn.example.com/cut1.jpg", caption: "Balayage, fresh out of the chair" },
+    { url: "https://cdn.example.com/cut2.jpg" },
+    { url: "http://insecure.example.com/nope.jpg" },
+    { url: "javascript:alert(1)" },
+  ]);
+  assert.ok(html.includes('class="gal"'), "gallery strip renders");
+  assert.ok(html.includes('src="https://cdn.example.com/cut1.jpg"'), "https photo renders");
+  assert.ok(html.includes('loading="lazy"'), "photos lazy-load");
+  assert.ok(html.includes("Balayage, fresh out of the chair"), "caption renders");
+  assert.equal(html.includes("insecure.example.com"), false, "http photos dropped");
+  assert.equal(html.includes("javascript:"), false, "scheme injection dropped");
+
+  const evil = gal([{ url: "https://cdn.example.com/x.jpg", caption: "<img src=x onerror=alert(1)>" }]);
+  assert.equal(evil.includes("<img src=x"), false, "captions cannot inject markup");
+  assert.ok(evil.includes("&lt;img src=x"), "escaped, not silently dropped");
+
+  assert.equal(gal([]).includes('class="gal"'), false, "empty gallery renders nothing (saves never walled)");
+});

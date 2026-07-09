@@ -192,6 +192,26 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
   <span class="ar">${closed ? "›" : "→"}</span>
 </a>`;
     }
+    case "gallery": {
+      // The portfolio surface (Marisa's ask: "shouldn't we have some
+      // photos to show our work"). Zero-JS by religion: a scroll-snap
+      // strip — swipe-native on the phones clients actually hold, the
+      // next photo peeking in as the affordance. No timers, no script.
+      const raw = Array.isArray(d.images) ? (d.images as Array<Record<string, unknown>>) : [];
+      const imgs = raw
+        .filter((im) => typeof im?.url === "string" && /^https:\/\//.test(im.url as string))
+        .slice(0, 12);
+      if (!imgs.length) return "";
+      return `<div class="gal">${imgs
+        .map((im, i) => {
+          const cap = typeof im.caption === "string" && im.caption.trim() ? im.caption.trim() : "";
+          return `<figure class="gali">
+  <img src="${esc(String(im.url))}" alt="${esc(cap || `photo ${i + 1}`)}" loading="lazy" decoding="async" />
+  ${cap ? `<figcaption>${esc(cap)}</figcaption>` : ""}
+</figure>`;
+        })
+        .join("")}</div>`;
+    }
     case "surfaces": {
       // The Save & share module: this identity's sibling surfaces as
       // tappable chips. Human trio (vCard/QR/card) defaults ON when
@@ -395,6 +415,22 @@ ${fonts.link}
   .gvw b { display: block; text-shadow: 2px 2px 0 ${giveawayStops(ctx.holoColors)[0]}55; }
   .gvs { display: block; font-style: normal; font-weight: 500; font-size: 12px;
          color: ${t.sub}; margin-top: 2px; }
+
+  /* Gallery — a scroll-snap portfolio strip. 82% cards leave the next
+     photo peeking in (the swipe affordance); captions sit on the page
+     canvas so they use page ink. Zero JS, native momentum. */
+  .gal { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+         margin: 12px 0; padding: 2px 2px 6px; -webkit-overflow-scrolling: touch;
+         scrollbar-width: none; }
+  .gal::-webkit-scrollbar { display: none; }
+  .gali { flex: 0 0 82%; scroll-snap-align: center; margin: 0; }
+  .gal .gali:only-child { flex-basis: 100%; }
+  .gali img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block;
+              border-radius: 16px; border: 1px solid ${t.accent}26;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 8px 24px -14px ${t.accent}40;
+              background: ${t.card}; }
+  .gali figcaption { font-size: 12.5px; color: ${pageSub(t)}; margin-top: 7px;
+                     text-align: center; }
 
   /* Save & share chips — sibling surfaces as quiet pills. */
   .sf { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }

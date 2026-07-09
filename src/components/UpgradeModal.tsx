@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Gift, Infinity as InfinityIcon, Search, Type, X } from "lucide-react";
+import { Gift, Images, Infinity as InfinityIcon, Search, Sparkles, Type, X } from "lucide-react";
 
 import { useAppConfig } from "../lib/useAppConfig";
 import { onUpgradeRequest, type UpgradeReason } from "../lib/upgrade";
@@ -15,19 +15,22 @@ import { UpgradeCard } from "./UpgradeCard";
  */
 
 const HEADLINES: Record<UpgradeReason, [string, string]> = {
-  giveaway: ["Giveaways are a premium unlock", "Host provably fair giveaways and harvest verified leads."],
+  giveaway: ["Giveaways are a premium unlock", "Host giveaways people can trust and harvest verified leads."],
   discover: ["Get found in Discover", "Premium pages can list themselves in the public directory."],
   font: ["Unlock the font vault", "Thirty-five more typefaces — display, serif, mono, script."],
   blocks: ["Your page wants more blocks", "Free pages hold three — premium builds without block limits."],
+  gallery: ["Show your work", "Photo galleries are a premium unlock — your page becomes a portfolio."],
   limit: ["You've used your free profile", "Premium adds more profiles — pay once, never monthly."],
   generic: ["Go Premium", "Everything the free tier holds back, unlocked at once."],
 };
 
 const PERKS = [
+  { icon: Images, label: "Photo galleries", sub: "show your work, swipeable" },
   { icon: Gift, label: "Giveaways people trust", sub: "lead generation with receipts" },
   { icon: Search, label: "Listed in Discover", sub: "be found, on purpose" },
   { icon: Type, label: "The font vault", sub: "38 curated typefaces" },
   { icon: InfinityIcon, label: "More profiles, unlimited blocks", sub: "build without block ceilings" },
+  { icon: Sparkles, label: "Everything that lands next", sub: "premium once means premium always" },
 ];
 
 export function UpgradeModal(): React.ReactElement | null {

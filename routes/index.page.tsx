@@ -600,6 +600,7 @@ export default function ClaimPage(): React.ReactElement {
                 "Everything in free",
                 `${cfg?.premiumProfileLimit && cfg.premiumProfileLimit > 0 ? `Up to ${cfg.premiumProfileLimit} profiles` : "More profiles"} — business, personal, next thing`,
                 "Unlimited blocks — build without ceilings",
+                "Photo galleries — show your work, swipeable",
                 "Giveaways anyone can check were honest",
                 "Listed in Discover — be found on purpose",
                 "The font vault — 38 curated typefaces",
