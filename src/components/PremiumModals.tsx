@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Check, Crown, Gift, Images, Infinity as InfinityIcon, Search, Type, X } from "lucide-react";
+import { Check, Crown, Gift, Globe, Images, Infinity as InfinityIcon, QrCode, Search, Type, X } from "lucide-react";
 
 import { billingViaLabel, type BillingStatus } from "../lib/useBillingStatus";
 import { useAppConfig } from "../lib/useAppConfig";
@@ -21,7 +21,9 @@ import { useAppConfig } from "../lib/useAppConfig";
 
 const PERKS = [
   { icon: Images, label: "Photo galleries — show your work" },
+  { icon: QrCode, label: "The QR studio — codes & flyers" },
   { icon: Gift, label: "Giveaways people trust" },
+  { icon: Globe, label: "Custom SEO & the share card" },
   { icon: Search, label: "Listed in Discover" },
   { icon: Type, label: "The font vault — 38 typefaces" },
   { icon: InfinityIcon, label: "More profiles, unlimited blocks" },

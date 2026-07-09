@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Gift, Images, Infinity as InfinityIcon, Search, Sparkles, Type, X } from "lucide-react";
+import { Gift, Globe, Images, Infinity as InfinityIcon, QrCode, Search, Sparkles, Type, X } from "lucide-react";
 
 import { useAppConfig } from "../lib/useAppConfig";
 import { onUpgradeRequest, type UpgradeReason } from "../lib/upgrade";
@@ -28,7 +28,9 @@ const HEADLINES: Record<UpgradeReason, [string, string]> = {
 
 const PERKS = [
   { icon: Images, label: "Photo galleries", sub: "show your work, swipeable" },
+  { icon: QrCode, label: "The QR studio", sub: "brand colors, per-link codes, flyers" },
   { icon: Gift, label: "Giveaways people trust", sub: "lead generation with receipts" },
+  { icon: Globe, label: "Own your snippet", sub: "custom SEO + the share card" },
   { icon: Search, label: "Listed in Discover", sub: "be found, on purpose" },
   { icon: Type, label: "The font vault", sub: "38 curated typefaces" },
   { icon: InfinityIcon, label: "More profiles, unlimited blocks", sub: "build without block ceilings" },

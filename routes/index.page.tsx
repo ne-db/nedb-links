@@ -602,6 +602,7 @@ export default function ClaimPage(): React.ReactElement {
                 "Unlimited blocks — build without ceilings",
                 "Photo galleries — show your work, swipeable",
                 "The QR studio — brand colors, per-link codes, flyers",
+                "Custom search snippet & share card",
                 "Giveaways anyone can check were honest",
                 "Listed in Discover — be found on purpose",
                 "The font vault — 38 curated typefaces",
