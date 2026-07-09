@@ -75,6 +75,29 @@ export function getAddress(): string | null {
   }
 }
 
+/**
+ * Session phase bus — login and logout are EVENTS, not just storage
+ * writes. The `storage` event only fires in *other* tabs; this one
+ * covers the tab where the sign-in actually happened, so the Nav
+ * account chip, the signed-in strip, and the billing badge all flip
+ * live — no reload between "signed out" and "signed in".
+ */
+const SESSION_EVENT = "links:session-changed";
+
+function notifySessionChanged(): void {
+  try {
+    window.dispatchEvent(new Event(SESSION_EVENT));
+  } catch {
+    /* no window (tests) — nothing to notify */
+  }
+}
+
+/** Subscribe to session phase changes; returns the unsubscribe. */
+export function onSessionChanged(fn: () => void): () => void {
+  window.addEventListener(SESSION_EVENT, fn);
+  return () => window.removeEventListener(SESSION_EVENT, fn);
+}
+
 /** Persist a session. Wallet mode passes the itc1… address; email mode
  *  passes the eml_ principal plus the human-readable email for display. */
 export function setSession(token: string, address: string, email?: string): void {
@@ -86,6 +109,7 @@ export function setSession(token: string, address: string, email?: string): void
   } catch {
     /* storage unavailable */
   }
+  notifySessionChanged();
 }
 
 export function getEmail(): string | null {
@@ -104,6 +128,21 @@ export function clearSession(): void {
   } catch {
     /* storage unavailable */
   }
+  notifySessionChanged();
+}
+
+/**
+ * Sign out — ONE code path everywhere (nav chip, mobile strip), so the
+ * logout phase can never differ by surface: best-effort server-side
+ * revoke, local wipe, land on the homepage signed out.
+ */
+export function signOut(): void {
+  void fetch("/api/auth/logout", {
+    method: "POST",
+    headers: { authorization: `Bearer ${getToken() ?? ""}` },
+  }).catch(() => undefined);
+  clearSession();
+  window.location.href = "/";
 }
 
 export function adminHeaders(): Record<string, string> {

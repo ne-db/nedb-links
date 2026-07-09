@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 
 import { setSession } from "../lib/api";
+import { greetingName, markWelcome } from "../lib/welcome";
 
 /**
  * The email-mode account surface — deliberately boring, deliberately
@@ -59,6 +60,9 @@ export function EmailGate({ onReady }: { onReady: () => void }): React.ReactElem
         setError(j.error ?? "sign-in failed");
         return;
       }
+      // Mark BEFORE the session event fires (setSession dispatches it;
+      // the toast reads the mark inside that very dispatch).
+      markWelcome("back", greetingName(j.email ?? email.trim(), null));
       setSession(j.token, j.address ?? "", j.email ?? email.trim());
       onReady();
     } catch (err) {
@@ -126,6 +130,8 @@ export function EmailGate({ onReady }: { onReady: () => void }): React.ReactElem
         setError(j.error ?? "that code didn't work");
         return;
       }
+      // Mark before setSession — see signIn.
+      markWelcome("back", greetingName(j.email ?? email.trim(), null));
       setSession(j.token, j.address ?? "", j.email ?? email.trim());
       onReady();
     } catch (err) {

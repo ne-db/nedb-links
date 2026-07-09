@@ -189,3 +189,53 @@ test("analytics are viewer-gated: cross-tenant 403, anon 401, bad id 400", async
   });
   assert.equal(bad.status, 400, "malformed ids are rejected before NQL");
 });
+
+interface Summary {
+  identities: number;
+  live: number;
+  totals: { views: number; scans: number; linkClicks: number; vcardDownloads: number };
+  perIdentity: Array<{
+    identityId: string;
+    handle: string;
+    displayName: string;
+    status: string;
+    views: number;
+    scans: number;
+    linkClicks: number;
+    vcardDownloads: number;
+  }>;
+}
+
+test("account summary rolls the portfolio into one call — and only YOUR portfolio", async () => {
+  // Anonymous → 401: the strip is for the signed-in.
+  const anon = await fetch(`${base}/api/analytics/summary`);
+  assert.equal(anon.status, 401, "summary requires a session");
+
+  // The owner: one identity, the exact traffic driven above.
+  const r = await fetch(`${base}/api/analytics/summary`, { headers: authed() });
+  assert.equal(r.status, 200, "owner reads the rollup");
+  const s = (await r.json()) as Summary;
+  assert.equal(s.identities, 1, "one identity in the portfolio");
+  assert.equal(s.live, 1, "the published identity counts as live");
+  assert.equal(s.totals.views, 4, "rollup views match the per-identity dashboard");
+  assert.equal(s.totals.scans, 1, "rollup scans match");
+  assert.equal(s.totals.linkClicks, 3, "rollup clicks match");
+  assert.equal(s.totals.vcardDownloads, 1, "rollup saves match");
+  assert.equal(s.perIdentity.length, 1);
+  assert.equal(s.perIdentity[0].identityId, identityId, "per-identity row carries the id");
+  assert.equal(s.perIdentity[0].handle, "signal-tester");
+  assert.equal(s.perIdentity[0].views, 4, "per-identity views ride along");
+  assert.equal(s.perIdentity[0].status, "published");
+
+  // A fresh account: zeros and an empty list — NOT someone else's
+  // numbers. This is the cross-tenant isolation assertion for the
+  // rollup path.
+  const empty = await walletLogin();
+  const er = await fetch(`${base}/api/analytics/summary`, { headers: authed(empty) });
+  assert.equal(er.status, 200, "empty accounts still get a truthful rollup");
+  const es = (await er.json()) as Summary;
+  assert.equal(es.identities, 0, "no identities visible across tenants");
+  assert.equal(es.live, 0);
+  assert.equal(es.totals.views, 0, "zero views — not the neighbor's four");
+  assert.equal(es.perIdentity.length, 0);
+});

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
 import { Crown } from "lucide-react";
 
-import { clearSession, getAddress, getEmail, getToken } from "../lib/api";
+import { getAddress, getEmail, onSessionChanged, signOut } from "../lib/api";
 import { useAppConfig } from "../lib/useAppConfig";
 import { useBillingStatus } from "../lib/useBillingStatus";
 import { requestUpgrade } from "../lib/upgrade";
 import { PremiumStatusModal } from "./PremiumModals";
+import { SubNav } from "./SubNav";
 import { UpgradeModal } from "./UpgradeModal";
+import { WelcomeToast } from "./WelcomeToast";
 import { applyTheme, getStoredTheme, getTheme, isThemeName } from "../lib/theme";
 
 /** itc1qxy2k…x0wlh — inline (keeps wallet crypto out of the nav bundle). */
@@ -26,6 +28,12 @@ function shortAddr(addr: string): string {
  *
  * One sticky element, 48px, everywhere. The Linear/Vercel pattern from
  * Mark's Signal brief: "NEDB Links | Identities | … Save Publish".
+ *
+ * ONE earned exception (Mark's call, July 8 — "logged in only, on
+ * scroll hide"): the signed-in strip (SubNav), a second row that only
+ * exists for owners, carries their live numbers, ducks on scroll-down
+ * and returns on scroll-up. Visitors still get the single bar; readers
+ * never pay its height.
  */
 export function Nav({
   context,
@@ -41,9 +49,15 @@ export function Nav({
   const { status: billing } = useBillingStatus();
   const [showStatus, setShowStatus] = useState(false);
 
+  // Mount AND session-phase changes: signing in at a gate (no
+  // navigation) flips the account chip live; signing out clears it.
   useEffect(() => {
-    setAddress(getAddress());
-    setEmail(getEmail());
+    const read = (): void => {
+      setAddress(getAddress());
+      setEmail(getEmail());
+    };
+    read();
+    return onSessionChanged(read);
   }, []);
 
   // Dev parity: prod injects the deployment default pre-paint; in dev
@@ -139,14 +153,7 @@ export function Nav({
                 {email ?? shortAddr(address)}
               </span>
               <button
-                onClick={() => {
-                  void fetch("/api/auth/logout", {
-                    method: "POST",
-                    headers: { authorization: `Bearer ${getToken() ?? ""}` },
-                  }).catch(() => undefined);
-                  clearSession();
-                  window.location.href = "/";
-                }}
+                onClick={signOut}
                 className="text-fg-subtle hover:text-signal-red transition text-xs font-medium"
                 title="Sign out"
               >
@@ -156,7 +163,9 @@ export function Nav({
           )}
         </div>
       </div>
+      <SubNav />
       <UpgradeModal />
+      <WelcomeToast />
       {showStatus && billing?.unlimited && (
         <PremiumStatusModal status={billing} onClose={() => setShowStatus(false)} />
       )}

@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
+import { Eye, Globe, MousePointerClick, QrCode } from "lucide-react";
 
 import { Nav } from "../src/components/Nav";
 import { Footer } from "../src/components/Footer";
 import { Gate } from "../src/components/Gate";
 import { PremiumWelcomeModal } from "../src/components/PremiumModals";
-import { ApiError, getJson } from "../src/lib/api";
+import type { AccountSummary } from "../src/components/SubNav";
+import { ApiError, getAddress, getEmail, getJson } from "../src/lib/api";
+import { fmtCount } from "../src/lib/format";
 import { notifyBillingChanged } from "../src/lib/useBillingStatus";
+import { daypartGreeting, greetingName } from "../src/lib/welcome";
 
 export const intent = {
   purpose:
@@ -28,8 +32,31 @@ interface IdentitySummary {
   updatedAt: string;
 }
 
+/** One number, one label — the dashboard's at-a-glance row. */
+function StatPanel({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Eye;
+  label: string;
+  value: string;
+}): React.ReactElement {
+  return (
+    <div className="panel px-4 py-3.5">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-fg-subtle font-semibold">
+        <Icon size={12} className="text-accent-soft" aria-hidden />
+        {label}
+      </div>
+      <div className="font-display text-2xl font-bold mt-1">{value}</div>
+    </div>
+  );
+}
+
 export default function IdentitiesPage(): React.ReactElement {
   const [identities, setIdentities] = useState<IdentitySummary[] | null>(null);
+  const [summary, setSummary] = useState<AccountSummary | "failed" | null>(null);
+  const [name, setName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [justUpgraded, setJustUpgraded] = useState(false);
@@ -50,9 +77,15 @@ export default function IdentitiesPage(): React.ReactElement {
   const load = useCallback(async () => {
     setError(null);
     setLocked(false);
+    setName(greetingName(getEmail(), getAddress()));
     try {
       const j = await getJson<{ identities: IdentitySummary[] }>("/api/identities");
       setIdentities(j.identities);
+      // The numbers ride a second call, never blocking the list — an
+      // engine hiccup costs the stats row, not the page.
+      getJson<AccountSummary>("/api/analytics/summary")
+        .then(setSummary)
+        .catch(() => setSummary("failed"));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setLocked(true);
@@ -80,9 +113,13 @@ export default function IdentitiesPage(): React.ReactElement {
       <Nav />
       {justUpgraded && <PremiumWelcomeModal onClose={() => setJustUpgraded(false)} />}
       <main className="max-w-5xl mx-auto px-5 py-10">
-        <header className="flex items-end justify-between">
+        <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold">Identities</h1>
+            <p className="kicker">your studio</p>
+            <h1 className="font-display text-3xl font-bold mt-1.5">
+              {name ? `${daypartGreeting()}, ${name}` : "Welcome back"}{" "}
+              <span aria-hidden>👋</span>
+            </h1>
             <p className="text-fg-muted text-sm mt-1">
               One owner, many identities — each with its own handle and every surface.
             </p>
@@ -91,6 +128,29 @@ export default function IdentitiesPage(): React.ReactElement {
             + Claim a handle
           </Link>
         </header>
+
+        {identities && identities.length > 0 && summary !== "failed" && (
+          <section
+            className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3"
+            aria-label="Your numbers, all time"
+          >
+            {summary ? (
+              <>
+                <StatPanel icon={Eye} label="Profile views" value={fmtCount(summary.totals.views)} />
+                <StatPanel icon={QrCode} label="QR scans" value={fmtCount(summary.totals.scans)} />
+                <StatPanel icon={MousePointerClick} label="Link clicks" value={fmtCount(summary.totals.linkClicks)} />
+                <StatPanel icon={Globe} label="Pages live" value={`${summary.live}/${summary.identities}`} />
+              </>
+            ) : (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="panel px-4 py-3.5 animate-pulse" aria-hidden>
+                  <div className="h-3 w-16 bg-ink-800 rounded" />
+                  <div className="h-7 w-12 bg-ink-800 rounded mt-2" />
+                </div>
+              ))
+            )}
+          </section>
+        )}
 
         {error && (
           <p className="mt-8 text-signal-red font-mono text-sm">{error}</p>
@@ -105,7 +165,12 @@ export default function IdentitiesPage(): React.ReactElement {
         )}
 
         <div className="mt-8 grid gap-3">
-          {identities?.map((idn) => (
+          {identities?.map((idn) => {
+            const stats =
+              summary && summary !== "failed"
+                ? summary.perIdentity.find((p) => p.identityId === idn.identityId)
+                : undefined;
+            return (
             <Link
               key={idn.identityId}
               href={`/edit/${idn.identityId}`}
@@ -132,6 +197,16 @@ export default function IdentitiesPage(): React.ReactElement {
                   <span>
                     {idn.blockCount} block{idn.blockCount === 1 ? "" : "s"}
                   </span>
+                  {stats && (
+                    <span className="inline-flex items-center gap-2.5 text-fg-subtle" title="Views · link clicks, all time">
+                      <span className="inline-flex items-center gap-1">
+                        <Eye size={12} aria-hidden /> {fmtCount(stats.views)}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <MousePointerClick size={12} aria-hidden /> {fmtCount(stats.linkClicks)}
+                      </span>
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -167,7 +242,8 @@ export default function IdentitiesPage(): React.ReactElement {
                 </span>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       </main>
       <Footer />

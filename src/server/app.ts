@@ -14,7 +14,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 
 import { accounts } from "./accounts";
 import { accountsEmail } from "./accounts-email";
-import { analytics } from "./analytics";
+import { analytics, analyticsSummary } from "./analytics";
 import { billing, mountWebhook } from "./billing";
 import { config } from "./config";
 import { db } from "./db";
@@ -93,6 +93,7 @@ export function createApp(): Express {
   // ONE account system per deployment. The other product's endpoints
   // don't exist here — wallet routes 404 on ne-db.com and vice versa.
   app.use("/api/auth", config.authMode === "email" ? accountsEmail : accounts);
+  app.use("/api/analytics", analyticsSummary);
   app.use("/api/billing", billing);
   app.use("/api/handles", handles);
   app.use("/api/identities/:id/analytics", analytics);

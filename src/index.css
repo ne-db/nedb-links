@@ -574,3 +574,25 @@ html.theme-fade *::after {
     pointer-events: none;
   }
 }
+
+/* ── Signed-in strip + welcome toast ─────────────────────────────────── */
+
+/* Horizontal stat scroll on small screens — content scrolls, chrome doesn't show. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* The welcome toast's entrance — a small drop-in, then it holds. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
