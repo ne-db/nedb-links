@@ -24,39 +24,47 @@ import { config } from "./config";
 
 export const demo = Router();
 
-const DEMO: IdentityManifest = {
-  schemaVersion: SCHEMA_VERSION,
-  identityId: "idn_demo000000000000000",
-  identityType: "business",
-  owner: "demo",
-  handle: "mintontheavenue",
-  displayName: "Mint on the Avenue",
-  bio: "Marisa Yvette — book your next appointment; walk-ins welcome, too.",
-  theme: "signal",
-  background: { kind: "gradient", direction: "diagonal", stops: ["#fbd8e2", "#f6c1d0"] },
-  blocks: [
-    // Real-shaped URLs on purpose: the renderer's allowlist drops
-    // anything that isn't http(s)/tel/mailto — "#" placeholders render
-    // as nothing at all (found live: an empty demo phone). Social link
-    // cards carry no explicit icon: the renderer's URL detection
-    // paints the brand glyphs, exactly like the real page.
-    { id: "blk_d1", type: "link", order: 0, data: { label: "Book an appointment", url: "https://mintontheavenue.com", icon: "✂" } },
-    { id: "blk_d2", type: "link", order: 1, data: { label: "MintOnTheAvenue.com", url: "https://mintontheavenue.com" } },
-    { id: "blk_d3", type: "link", order: 2, data: { label: "Instagram", url: "https://instagram.com/mintontheavenue" } },
-    { id: "blk_d4", type: "link", order: 3, data: { label: "TikTok", url: "https://tiktok.com/@mintontheavenue" } },
-    { id: "blk_d5", type: "link", order: 4, data: { label: "Facebook", url: "https://facebook.com/mintontheavenue" } },
-    { id: "blk_d6", type: "link", order: 5, data: { label: "X.com", url: "https://x.com/mintontheavenue" } },
-    { id: "blk_d7", type: "link", order: 6, data: { label: "Email", url: "mailto:hello@mintontheavenue.com" } },
-    { id: "blk_d8", type: "header", order: 7, data: { text: "Save & share" } },
-    { id: "blk_d9", type: "surfaces", order: 8, data: { md: true, json: true } },
-  ],
-  capabilities: [],
-  renderers: [],
-  status: "published",
-  publishedAt: "2026-07-01T12:00:00.000Z",
-  createdAt: "2026-07-01T11:00:00.000Z",
-  updatedAt: "2026-07-01T12:00:00.000Z",
-};
+/**
+ * Every card routes to HER PROFILE on this instance (Mark's spec:
+ * "make them all link to the mintontheavenue profile — that's her
+ * profile"). The demo is a gateway: tap anything, land on the real
+ * page where the real, working links live. Built per-request from the
+ * origin so it's correct on every deployment — prod, probe, self-host.
+ */
+function demoManifest(origin: string): IdentityManifest {
+  const profile = `${origin}/mintontheavenue`;
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    identityId: "idn_demo000000000000000",
+    identityType: "business",
+    owner: "demo",
+    handle: "mintontheavenue",
+    displayName: "Mint on the Avenue",
+    bio: "Marisa Yvette — book your next appointment; walk-ins welcome, too.",
+    theme: "signal",
+    background: { kind: "gradient", direction: "diagonal", stops: ["#fbd8e2", "#f6c1d0"] },
+    blocks: [
+      // Labels word-by-word from the real page; brand glyphs come from
+      // the renderer's icon detection on the labels' brands upstream —
+      // the Book card keeps its scissors explicitly.
+      { id: "blk_d1", type: "link", order: 0, data: { label: "Book an appointment", url: profile, icon: "✂" } },
+      { id: "blk_d2", type: "link", order: 1, data: { label: "MintOnTheAvenue.com", url: profile } },
+      { id: "blk_d3", type: "link", order: 2, data: { label: "Instagram", url: profile } },
+      { id: "blk_d4", type: "link", order: 3, data: { label: "TikTok", url: profile } },
+      { id: "blk_d5", type: "link", order: 4, data: { label: "Facebook", url: profile } },
+      { id: "blk_d6", type: "link", order: 5, data: { label: "X.com", url: profile } },
+      { id: "blk_d7", type: "link", order: 6, data: { label: "Email", url: profile } },
+      { id: "blk_d8", type: "header", order: 7, data: { text: "Save & share" } },
+      { id: "blk_d9", type: "surfaces", order: 8, data: { md: true, json: true } },
+    ],
+    capabilities: [],
+    renderers: [],
+    status: "published",
+    publishedAt: "2026-07-01T12:00:00.000Z",
+    createdAt: "2026-07-01T11:00:00.000Z",
+    updatedAt: "2026-07-01T12:00:00.000Z",
+  };
+}
 
 demo.get("/demo", (req, res) => {
   const origin =
@@ -64,7 +72,7 @@ demo.get("/demo", (req, res) => {
   res.setHeader("content-type", "text/html; charset=utf-8");
   res.setHeader("cache-control", "public, max-age=300");
   res.send(
-    renderProfileHtml(DEMO, {
+    renderProfileHtml(demoManifest(origin), {
       origin,
       brand: config.brandName,
       brandLogo: config.brandLogoUrl || undefined,
