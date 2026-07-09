@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BarChart3, Contact, Gift, Link2, Palette, QrCode, ShieldCheck, Sparkles } from "lucide-react";
 
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
@@ -365,7 +366,7 @@ export default function ClaimPage(): React.ReactElement {
           <UpgradeCard onUnlocked={() => setNeedsUpgrade(false)} />
         </div>
       ) : (
-      <section className="w-full max-w-xl mt-12 panel p-6 sm:p-8 shadow-glow animate-fade-in">
+      <section id="claim" className="w-full max-w-xl mt-12 panel p-6 sm:p-8 shadow-glow animate-fade-in scroll-mt-20">
         {!claimed ? (
           <>
             <label className="label">Claim your handle</label>
@@ -467,6 +468,93 @@ export default function ClaimPage(): React.ReactElement {
         )}
       </section>
       )}
+
+      {/* ── The sell — Marisa's clients land here not knowing what a
+          "claim" even is. Below the fold answers it: what this is, how
+          it works, what you get, why to trust it. Short lines; the
+          product does the talking. ── */}
+      <section className="w-full max-w-4xl mt-24">
+        <p className="kicker text-center">what is this?</p>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mt-2">
+          One link that holds all your links.
+        </h2>
+        <p className="text-fg-muted text-center mt-3 max-w-xl mx-auto">
+          Your page at <span className="font-mono text-accent-soft">{typeof window !== "undefined" ? window.location.host : "ourlynx.com"}/you</span> —
+          everything you do, one tap away, ready for your bio, your counter, and your business card.
+        </p>
+
+        <div className="mt-10 grid sm:grid-cols-3 gap-4">
+          {[
+            { n: "1", title: "Claim your name", copy: "Pick your handle — it's yours in under a minute." },
+            { n: "2", title: "Make it yours", copy: "Start from a template, drop in your links, choose your look." },
+            { n: "3", title: "Share one link", copy: "Bio, QR sticker, business card — every surface from one page." },
+          ].map((s2) => (
+            <div key={s2.n} className="panel p-5 text-center">
+              <span className="w-9 h-9 rounded-full bg-accent/10 text-accent-soft font-display font-bold inline-flex items-center justify-center">
+                {s2.n}
+              </span>
+              <p className="font-semibold mt-3">{s2.title}</p>
+              <p className="text-sm text-fg-muted mt-1.5">{s2.copy}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="w-full max-w-4xl mt-20">
+        <p className="kicker text-center">what you get</p>
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mt-2">
+          More than a link page.
+        </h2>
+        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { Icon: Link2, title: "Every link, one page", copy: "Instagram, booking, menu, music — all behind one link you'll never have to change." },
+            { Icon: QrCode, title: "Print-grade QR", copy: "Stick it on the counter or the mirror. Scans are counted separately from taps." },
+            { Icon: Contact, title: "Save my contact", copy: "Visitors add you to their phone in one tap — name, links, and all." },
+            { Icon: Gift, title: "Giveaways people trust", copy: "Run a giveaway with a winner drawn provably fair — anyone can check the math." },
+            { Icon: BarChart3, title: "Know what works", copy: "Live views, scans, and clicks — see where people found you." },
+            { Icon: Palette, title: "Your look", copy: "Themes, gradient backgrounds, and a vault of fonts. Your page, your taste." },
+          ].map(({ Icon, title, copy }) => (
+            <div key={title} className="panel p-5">
+              <span className="w-9 h-9 rounded-xl bg-accent/10 text-accent-soft inline-flex items-center justify-center">
+                <Icon size={17} />
+              </span>
+              <p className="font-semibold mt-3">{title}</p>
+              <p className="text-sm text-fg-muted mt-1.5">{copy}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="w-full max-w-4xl mt-20">
+        <div className="panel p-6 sm:p-8 grid sm:grid-cols-3 gap-6 text-center">
+          <div>
+            <Sparkles size={18} className="mx-auto text-accent-soft" />
+            <p className="font-semibold mt-2 text-sm">Free forever</p>
+            <p className="text-xs text-fg-muted mt-1">One page, no card required.</p>
+          </div>
+          <div>
+            <ShieldCheck size={18} className="mx-auto text-accent-soft" />
+            <p className="font-semibold mt-2 text-sm">On the record</p>
+            <p className="text-xs text-fg-muted mt-1">Every edit is versioned and tamper-evident — your page can't be quietly changed.</p>
+          </div>
+          <div>
+            <Gift size={18} className="mx-auto text-accent-soft" />
+            <p className="font-semibold mt-2 text-sm">Premium, once</p>
+            <p className="text-xs text-fg-muted mt-1">Unlock everything with one payment. Never monthly.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full max-w-4xl mt-20 text-center">
+        <h2 className="font-display text-3xl sm:text-4xl font-bold">
+          Your name is waiting.
+        </h2>
+        <p className="text-fg-muted mt-3">Claiming takes under a minute — and the first page is free, forever.</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <a href="#claim" className="btn btn-primary !py-3 !px-8 !text-base">Claim your handle</a>
+          <a href="/discover" className="btn btn-secondary !py-3 !px-6">See who's here →</a>
+        </div>
+      </section>
 
       <footer className="mt-16 text-center text-fg-subtle text-sm max-w-xl">
         {emailMode ? (
