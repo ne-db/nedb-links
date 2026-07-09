@@ -7,7 +7,8 @@ import { getTheme, nextTheme, THEME_LABELS, toggleTheme, type ThemeName } from "
 /**
  * The app footer — quiet, uniform, and now the home of the theme
  * switcher (moved out of the nav to keep the top bar lean on phones).
- * Brand mark · Discover · theme cycler. That's it.
+ * Brand mark · Discover · Terms · theme cycler, plus the craftsmen's
+ * signature line. That's it.
  */
 export function Footer(): React.ReactElement {
   const cfg = useAppConfig();
@@ -34,6 +35,10 @@ export function Footer(): React.ReactElement {
           Discover
         </a>
         <span className="h-3 w-px bg-ink-800" aria-hidden />
+        <Link href="/terms" className="font-medium hover:text-fg transition">
+          Terms
+        </Link>
+        <span className="h-3 w-px bg-ink-800" aria-hidden />
         <button
           onClick={() => setTheme(toggleTheme())}
           className="chip font-mono text-[10px] uppercase tracking-widest text-fg-subtle hover:text-accent-soft hover:border-accent/40 transition"
@@ -42,6 +47,10 @@ export function Footer(): React.ReactElement {
           {THEME_LABELS[theme]}
         </button>
       </div>
+      {/* The craftsmen's mark — three of us built this, on the record. 3 > 1. */}
+      <p className="mt-5 text-center font-mono text-[10px] tracking-wide text-fg-faint">
+        © {new Date().getFullYear()} INTERCHAINED LLC · crafted 3&gt;1 — Mark × the Oracle × Vex
+      </p>
     </footer>
   );
 }

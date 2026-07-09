@@ -20,10 +20,10 @@ import { useAppConfig } from "../lib/useAppConfig";
  */
 
 const PERKS = [
-  { icon: Gift, label: "Provably fair giveaways" },
+  { icon: Gift, label: "Giveaways people trust" },
   { icon: Search, label: "Listed in Discover" },
   { icon: Type, label: "The font vault — 38 typefaces" },
-  { icon: InfinityIcon, label: "Unlimited profiles" },
+  { icon: InfinityIcon, label: "More profiles, unlimited blocks" },
 ];
 
 function Shell({
@@ -89,7 +89,7 @@ export function PremiumWelcomeModal({ onClose }: { onClose: () => void }): React
         <p className="kicker mt-3">premium unlocked</p>
         <h2 className="font-display text-2xl font-bold mt-1">Welcome to Premium 🎉</h2>
         <p className="text-fg-muted text-sm mt-2">
-          That's it — unlimited, once, never monthly. Here's what just turned on:
+          That's it — Premium, once, never monthly. Here's what just turned on:
         </p>
       </div>
 

@@ -18,16 +18,16 @@ const HEADLINES: Record<UpgradeReason, [string, string]> = {
   giveaway: ["Giveaways are a premium unlock", "Host provably fair giveaways and harvest verified leads."],
   discover: ["Get found in Discover", "Premium pages can list themselves in the public directory."],
   font: ["Unlock the font vault", "Thirty-five more typefaces — display, serif, mono, script."],
-  blocks: ["Your page wants more blocks", "Free pages hold three — premium builds without limits."],
-  limit: ["You've used your free profile", "Premium removes the limit — every handle you want."],
+  blocks: ["Your page wants more blocks", "Free pages hold three — premium builds without block limits."],
+  limit: ["You've used your free profile", "Premium adds more profiles — pay once, never monthly."],
   generic: ["Go Premium", "Everything the free tier holds back, unlocked at once."],
 };
 
 const PERKS = [
-  { icon: Gift, label: "Provably fair giveaways", sub: "lead generation with receipts" },
+  { icon: Gift, label: "Giveaways people trust", sub: "lead generation with receipts" },
   { icon: Search, label: "Listed in Discover", sub: "be found, on purpose" },
   { icon: Type, label: "The font vault", sub: "38 curated typefaces" },
-  { icon: InfinityIcon, label: "Unlimited profiles & blocks", sub: "build without ceilings" },
+  { icon: InfinityIcon, label: "More profiles, unlimited blocks", sub: "build without block ceilings" },
 ];
 
 export function UpgradeModal(): React.ReactElement | null {

@@ -135,7 +135,7 @@ export function Nav({
             <button
               onClick={() => requestUpgrade("generic")}
               className="chip text-[11px] font-semibold text-accent-soft hover:border-accent/50 transition"
-              title="Go Premium — giveaways, Discover, the font vault, unlimited profiles"
+              title="Go Premium — giveaways, Discover, the font vault, more profiles"
             >
               ✨ Premium
             </button>

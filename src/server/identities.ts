@@ -161,7 +161,15 @@ identities.post("/", requireUser, wrap(async (req, res) => {
 
   // The claim gate: free tier is one profile; unlimited via a one-time
   // pay-what-you-want or by holding ITC on the account address.
-  if (!(await canClaimAnother(auth))) {
+  const gate = await canClaimAnother(auth);
+  if (!gate.ok) {
+    if (gate.reason === "premium_limit") {
+      res.status(402).json({
+        error: `Premium covers ${config.premiumProfileLimit} profiles — need more? Talk to us and we'll sort you out.`,
+        code: "premium_limit",
+      });
+      return;
+    }
     res.status(402).json({ error: "free plan includes one profile", code: "upgrade_required" });
     return;
   }
@@ -354,7 +362,7 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
             ? "Discover listing is a premium feature — upgrade to be found"
             : wantsPremiumFont
               ? "that font is a premium unlock — upgrade to use the full vault"
-              : `free pages hold ${config.freeBlockLimit} blocks — go unlimited to keep building`,
+              : `free pages hold ${config.freeBlockLimit} blocks — go Premium to keep building`,
         code: "premium_required",
       });
       return;

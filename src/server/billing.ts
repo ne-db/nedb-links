@@ -2,13 +2,17 @@
  * Monetization — the anti-Linktree model.
  *
  *   Free: one profile per account, forever.
- *   Unlimited, two doors:
+ *   Premium, two doors:
  *     - pay what you want, ONCE (Stripe; floor $1) — no subscriptions,
- *       no rent. The receipt is an entitlement document in the engine,
- *       provenance and all.
+ *       no rent. Buys up to premiumProfileLimit profiles (the anti-squat
+ *       ceiling; a $5 payment must never buy the alphabet) + unlimited
+ *       blocks and every premium feature. The receipt is an entitlement
+ *       document in the engine, provenance and all. Entitlements older
+ *       than premiumCapEpoch keep the uncapped deal they bought.
  *     - hold ≥ LINKS_ITC_THRESHOLD ITC on your account address —
  *       ownership was proven by the login signature, so the check is
- *       one ElectrumX query. Hold the coin, never pay the fee.
+ *       one ElectrumX query. Hold the coin, never pay the fee. Holders
+ *       stay uncapped: their capital is locked the whole time.
  *
  * Self-hosters who configure neither Stripe nor a limit run unlimited
  * free. Monetize the hosted instance; never the GPLv3 code.
@@ -74,12 +78,41 @@ export async function unlimitedStatus(auth: AuthContext): Promise<UnlimitedStatu
   return { unlimited: false, via: "none" };
 }
 
-/** The claim gate: may this account create one more profile? */
-export async function canClaimAnother(auth: AuthContext): Promise<boolean> {
-  if (!config.limitEnabled || auth.isOperator) return true;
+export interface ClaimGate {
+  ok: boolean;
+  /** Which ceiling said no — the claim route words the 402 accordingly. */
+  reason: "free_limit" | "premium_limit" | null;
+}
+
+/** Is this supporter exempt from the premium profile cap? Entitlements
+ *  bought before the cap existed keep the uncapped deal they paid for —
+ *  a paid promise is never rewritten retroactively. */
+export function isGrandfathered(ent: EntitlementRecord): boolean {
+  return ent.createdAt < config.premiumCapEpoch;
+}
+
+/**
+ * The claim gate: may this account create one more profile?
+ *
+ * Free tier: freeProfileLimit. Supporters: premiumProfileLimit — the
+ * anti-squat lever (a one-time payment must never buy the alphabet) —
+ * unless grandfathered. Operators, holders (capital stays locked the
+ * whole time — different economics), and unlimited instances are
+ * uncapped.
+ */
+export async function canClaimAnother(auth: AuthContext): Promise<ClaimGate> {
+  if (!config.limitEnabled || auth.isOperator) return { ok: true, reason: null };
   const owned = await ownedProfileCount(auth.address);
-  if (owned < config.freeProfileLimit) return true;
-  return (await unlimitedStatus(auth)).unlimited;
+  if (owned < config.freeProfileLimit) return { ok: true, reason: null };
+  const status = await unlimitedStatus(auth);
+  if (!status.unlimited) return { ok: false, reason: "free_limit" };
+  if (status.via === "supporter" && config.premiumProfileLimit > 0) {
+    const ent = await getEntitlement(auth.address);
+    if (ent && !isGrandfathered(ent) && owned >= config.premiumProfileLimit) {
+      return { ok: false, reason: "premium_limit" };
+    }
+  }
+  return { ok: true, reason: null };
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -98,10 +131,20 @@ billing.get("/status", requireUser, wrap(async (_req, res) => {
       ? confirmedItcBalance(auth.address)
       : Promise.resolve(null),
   ]);
+  // Cap exemption: operators, holders, unlimited instances, and
+  // grandfathered supporters have no profile ceiling.
+  const ent = status.via === "supporter" ? await getEntitlement(auth.address) : null;
+  const capExempt =
+    status.unlimited &&
+    (status.via !== "supporter" ||
+      config.premiumProfileLimit === 0 ||
+      (ent !== null && isGrandfathered(ent)));
   res.json({
     limitEnabled: config.limitEnabled,
     freeLimit: config.freeProfileLimit,
     freeBlockLimit: config.freeBlockLimit,
+    premiumProfileLimit: config.premiumProfileLimit,
+    capExempt,
     owned,
     unlimited: status.unlimited,
     via: status.via,
@@ -166,9 +209,15 @@ billing.post("/checkout", requireUser, wrap(async (req, res) => {
         price_data: {
           currency: "usd",
           unit_amount: body.data.amountCents,
+          // The contract surface — this sentence is what people buy.
+          // It must promise exactly what the gate enforces: N profiles,
+          // not "unlimited" (the squatter's favorite word).
           product_data: {
-            name: "NEDB Links — unlimited profiles, forever",
-            description: "Pay what you want, once. No subscription.",
+            name: `${config.brandName} Premium — pay once`,
+            description:
+              config.premiumProfileLimit > 0
+                ? `Pay what you want, once. Up to ${config.premiumProfileLimit} profiles, unlimited blocks, giveaways, Discover & the font vault. No subscription, ever.`
+                : "Pay what you want, once. Unlimited blocks, giveaways, Discover & the font vault. No subscription, ever.",
           },
         },
       },

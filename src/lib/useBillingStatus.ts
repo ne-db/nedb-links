@@ -10,6 +10,11 @@ import { getJson, getToken, onSessionChanged } from "./api";
 export interface BillingStatus {
   limitEnabled: boolean;
   freeLimit: number;
+  /** Premium profile ceiling (0 = uncapped instance policy). */
+  premiumProfileLimit: number;
+  /** True when THIS account has no ceiling (operator, holder,
+   *  unlimited instance, or grandfathered supporter). */
+  capExempt: boolean;
   owned: number;
   unlimited: boolean;
   via: "operator" | "supporter" | "holder" | "unlimited-instance" | "none" | string;

@@ -61,6 +61,14 @@ export interface LinksConfig {
   freeProfileLimit: number;
   /** Blocks per page on the free tier — unlimited for premium. */
   freeBlockLimit: number;
+  /** Premium (supporter) profile ceiling — the anti-squat lever. A $5
+   *  one-time payment must never buy the alphabet. 0 = uncapped (the
+   *  self-host stance). Default 2 — Mark's call, 7/8: start tight,
+   *  raising later is a gift. */
+  premiumProfileLimit: number;
+  /** Entitlements created BEFORE this instant keep the uncapped deal
+   *  they bought — a paid promise is never rewritten retroactively. */
+  premiumCapEpoch: string;
   /** Stripe (pay-what-you-want, one time). Absent = fiat door closed. */
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
@@ -108,6 +116,8 @@ export function loadConfig(): LinksConfig {
       process.env.LINKS_FREE_PROFILE_LIMIT !== undefined,
     freeProfileLimit: Math.max(1, Number(process.env.LINKS_FREE_PROFILE_LIMIT || 1)),
     freeBlockLimit: Math.max(1, Number(process.env.LINKS_FREE_BLOCK_LIMIT || 3)),
+    premiumProfileLimit: Math.max(0, Number(process.env.LINKS_PREMIUM_PROFILE_LIMIT ?? 2)),
+    premiumCapEpoch: process.env.LINKS_PREMIUM_CAP_EPOCH || "2026-07-10T00:00:00Z",
     itcRpcUrl: process.env.ITC_RPC_URL || "",
     brandLogoUrl: process.env.LINKS_BRAND_LOGO_URL || "",
     faviconUrl: process.env.LINKS_FAVICON_URL || "",

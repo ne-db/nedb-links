@@ -16,6 +16,8 @@ import { notifyBillingChanged } from "../lib/useBillingStatus";
 interface BillingStatus {
   limitEnabled: boolean;
   freeLimit: number;
+  premiumProfileLimit: number;
+  capExempt: boolean;
   owned: number;
   unlimited: boolean;
   via: string;
@@ -93,11 +95,15 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
         one profile free, forever
       </p>
       <h2 className="font-display text-2xl font-bold mt-2 text-center">
-        {emailMode ? "Unlimited, once. Never monthly." : "Want unlimited? Two doors, no rent."}
+        {emailMode ? "Premium, once. Never monthly." : "Want more? Two doors, no rent."}
       </h2>
       <p className="text-fg-muted text-sm text-center mt-2">
         You have {status.owned} of {status.freeLimit} free profile
-        {status.freeLimit === 1 ? "" : "s"}. Unlock unlimited once — never monthly.
+        {status.freeLimit === 1 ? "" : "s"}. Premium adds{" "}
+        {status.premiumProfileLimit > 0
+          ? `up to ${status.premiumProfileLimit} profiles`
+          : "unlimited profiles"}{" "}
+        + unlimited blocks — pay once, never monthly.
       </p>
 
       <div className={`mt-6 grid gap-3 ${emailMode ? "max-w-sm mx-auto" : "sm:grid-cols-2"}`}>
@@ -139,7 +145,7 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
                 className="mt-auto pt-3"
               >
                 <span className="btn btn-primary w-full !py-2.5">
-                  {busy ? "Opening checkout…" : "Unlock unlimited"}
+                  {busy ? "Opening checkout…" : "Unlock Premium"}
                 </span>
               </button>
             </>

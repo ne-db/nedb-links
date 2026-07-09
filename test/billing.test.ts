@@ -16,6 +16,7 @@ process.env.NEDB_DB = `links_billing_${Date.now().toString(36)}`;
 delete process.env.LINKS_ADMIN_TOKEN;
 delete process.env.STRIPE_SECRET_KEY;
 process.env.LINKS_FREE_PROFILE_LIMIT = "1"; // activates limits without Stripe
+process.env.LINKS_PREMIUM_CAP_EPOCH = "2020-01-01T00:00:00Z"; // suite entitlements are NOT grandfathered
 process.env.ELECTRUMX_HOST = "127.0.0.1"; // unroutable here: fail-closed path
 process.env.ELECTRUMX_PORT = "1";
 
@@ -149,7 +150,7 @@ test("the block cap: templates slice at claim, saves gate at the limit — all b
   assert.equal(over.status, 403, "the fourth block gates");
   const j = (await over.json()) as { code?: string; error?: string };
   assert.equal(j.code, "premium_required");
-  assert.match(j.error ?? "", /go unlimited/i);
+  assert.match(j.error ?? "", /go premium/i);
 });
 
 test("checkout without Stripe answers 503, not a crash", async () => {
@@ -227,4 +228,45 @@ test("safeReturnPath: same-origin paths pass, everything shady falls back", asyn
   assert.equal(safeReturnPath(undefined), "/identities");
   assert.equal(safeReturnPath("/"), "/identities");
   assert.equal(safeReturnPath(`/${"a".repeat(300)}`), "/identities");
+});
+
+test("premium profile cap: the third claim meets the ceiling, grandfathers pass", async () => {
+  // Suite state: the supporter owns gatefree + gatesecond (2 of 2).
+  // premiumProfileLimit defaults to 2; the epoch pinned above makes the
+  // suite's entitlement post-epoch — i.e. capped, not grandfathered.
+  const { COLLECTIONS } = await import("../src/lib/identity");
+  const r = await fetch(`${base}/api/identities`, {
+    method: "POST",
+    headers: authed(),
+    body: claimBody("gatethird"),
+  });
+  assert.equal(r.status, 402, "third claim hits the premium ceiling");
+  const j = (await r.json()) as { error: string; code: string };
+  assert.equal(j.code, "premium_limit", "the code names the right wall");
+  assert.match(j.error, /talk to us/i, "the copy invites, not scolds");
+
+  // Status is honest about the ceiling.
+  const s = (await (
+    await fetch(`${base}/api/billing/status`, { headers: authed() })
+  ).json()) as { premiumProfileLimit: number; capExempt: boolean; unlimited: boolean };
+  assert.equal(s.premiumProfileLimit, 2);
+  assert.equal(s.unlimited, true, "still premium — the cap is not a downgrade");
+  assert.equal(s.capExempt, false, "post-epoch supporter is capped");
+
+  // Grandfather: age the entitlement to pre-epoch — the old deal holds.
+  const ent = (await db.get(COLLECTIONS.entitlements, address)) as Record<string, unknown>;
+  await db.put(COLLECTIONS.entitlements, address, {
+    ...ent,
+    createdAt: "2019-06-01T00:00:00.000Z",
+  });
+  const g = await fetch(`${base}/api/identities`, {
+    method: "POST",
+    headers: authed(),
+    body: claimBody("gatethird"),
+  });
+  assert.equal(g.status, 201, "grandfathered supporter keeps the uncapped deal they bought");
+  const s2 = (await (
+    await fetch(`${base}/api/billing/status`, { headers: authed() })
+  ).json()) as { capExempt: boolean };
+  assert.equal(s2.capExempt, true, "status reports the exemption");
 });
