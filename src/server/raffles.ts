@@ -227,19 +227,28 @@ async function beaconAfterClose(closesAt: string): Promise<{
   };
 }
 
-// ── Throttle (per key, in-memory — same pattern as magic/uploads) ────────────
-
-const hits = new Map<string, { n: number; resetAt: number }>();
-function throttled(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  const h = hits.get(key);
-  if (!h || now > h.resetAt) {
-    hits.set(key, { n: 1, resetAt: now + windowMs });
-    return false;
-  }
-  h.n++;
-  return h.n > max;
-}
+/**
+ * NO RATE LIMITS ON RAFFLE ENTRY — Mark's call, 2026-09-01, from a live
+ * incident: real people entering a giveaway from a school were told
+ * "Too many attempts" and turned away.
+ *
+ * The limiter was 5 attempts per IP per 10 minutes, which was wrong twice
+ * over. An IP is not a person: a school, an office or a café puts
+ * hundreds of legitimate entrants behind one address, so the budget was
+ * being spent by strangers. And `trust proxy` was never set, so behind
+ * nginx/Cloudflare `req.ip` was the PROXY's address for everyone — making
+ * a per-IP limit actually a per-INSTANCE one. Five entries, site-wide,
+ * per ten minutes.
+ *
+ * What still protects the draw is unchanged and is the part that always
+ * mattered: ONE ENTRY PER EMAIL, and that email must receive and enter a
+ * six-digit code before a ticket exists. Fairness is enforced by identity,
+ * not by counting packets from an address.
+ *
+ * Do not reintroduce an IP limit here without solving the shared-NAT case
+ * first. Turning away a classroom to theoretically inconvenience someone
+ * who can rent addresses is a bad trade.
+ */
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
@@ -277,10 +286,6 @@ raffles.post("/api/raffles/:id/enter", wrap(async (req, res) => {
   const body = enterSchema.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.issues[0]?.message ?? "name, phone, and email required" });
-    return;
-  }
-  if (throttled(`enter:${req.ip}:${r.raffleId}`, 5, 10 * 60 * 1000)) {
-    res.status(429).json({ error: "too many attempts — try again in a few minutes" });
     return;
   }
   const email = body.data.email;
@@ -331,10 +336,6 @@ raffles.post("/api/raffles/:id/confirm", wrap(async (req, res) => {
   }).safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: "that code didn't look right" });
-    return;
-  }
-  if (throttled(`confirm:${req.ip}`, 10, 10 * 60 * 1000)) {
-    res.status(429).json({ error: "too many attempts — try again in a few minutes" });
     return;
   }
   const r = await getRaffle(String(req.params.id));
@@ -804,10 +805,6 @@ raffles.post("/r/:id/enter", wrap(async (req, res) => {
     res.send(pageShell("Check the form", `<h1>Something's missing</h1><p class="sub">${esc(parsed.error.issues[0]?.message ?? "name, phone, and a valid email are required")}</p>${back}`));
     return;
   }
-  if (throttled(`enter:${req.ip}:${r.raffleId}`, 5, 10 * 60 * 1000)) {
-    res.send(pageShell("Slow down", `<h1>Too many attempts</h1><p class="sub">Try again in a few minutes.</p>${back}`));
-    return;
-  }
   const email = parsed.data.email;
   const principal = `eml_${sha256Hex(email).slice(0, 20)}`;
   const allEntries = await entriesOf(r.raffleId);
@@ -854,7 +851,7 @@ raffles.post("/r/:id/confirm", wrap(async (req, res) => {
   }
   const back = `<p class="sub"><a href="/r/${esc(r.raffleId)}">← back</a></p>`;
   const body = z.object({ pendingId: z.string().min(8).max(60), code: z.string().regex(/^\d{6}$/) }).safeParse(req.body);
-  if (!body.success || throttled(`confirm:${req.ip}`, 10, 10 * 60 * 1000)) {
+  if (!body.success) {
     res.send(pageShell("Try again", `<h1>That didn't work</h1><p class="sub">Check the code and try again.</p>${back}`));
     return;
   }
