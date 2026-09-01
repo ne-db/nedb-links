@@ -9,12 +9,29 @@
 export const TOKEN_KEY = "links-admin-token";
 export const ADDRESS_KEY = "links-address";
 export const EMAIL_KEY = "links-email";
+/**
+ * The instance operator token, kept in its OWN slot.
+ *
+ * Deliberately not TOKEN_KEY (which, despite the legacy name, holds the
+ * ordinary user session). Two reasons, both found the hard way:
+ *   1. Sharing one slot means signing into the console logs you out of
+ *      your own account, and signing back in silently drops you out of
+ *      the console.
+ *   2. The operator token bypasses every role check. If it rode along on
+ *      every request it would silently elevate ordinary product calls —
+ *      so it is attached ONLY to /api/admin/*, by operatorHeaders().
+ */
+export const OPERATOR_KEY = "links-operator-token";
 
 /** Deployment config — which product this is. Fetched once, cached. */
 export interface AppConfig {
   authMode: "wallet" | "email";
   brandLogoUrl?: string;
   brandName: string;
+  /** Which storefront wireframe this deployment wears ("default"|"kundli"). */
+  brandKey?: string;
+  /** ISO 4217 the storefront quotes money in. */
+  currency?: string;
   defaultTheme: string;
   fiatDoor: boolean;
   limitEnabled: boolean;
@@ -148,6 +165,60 @@ export function signOut(): void {
   }).catch(() => undefined);
   clearSession();
   window.location.href = "/";
+}
+
+export function getOperatorToken(): string | null {
+  try {
+    return localStorage.getItem(OPERATOR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setOperatorToken(token: string): void {
+  try {
+    if (token) localStorage.setItem(OPERATOR_KEY, token);
+    else localStorage.removeItem(OPERATOR_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/**
+ * Auth for operator-only endpoints — the operator key, or nothing.
+ *
+ * Deliberately does NOT fall back to the user session (Mark, 2026-08-22:
+ * "its own auth, nothing to do with login"). The console is unlocked by
+ * possessing the instance key, not by being a signed-in person, and
+ * conflating the two is how a console quietly becomes reachable by
+ * whoever happens to be logged in.
+ */
+export function operatorHeaders(): Record<string, string> {
+  const op = getOperatorToken();
+  return op ? { Authorization: `Bearer ${op}` } : {};
+}
+
+/** Verify a pasted key against the real gate before storing it. */
+export async function unlockOperator(token: string): Promise<boolean> {
+  const t = token.trim();
+  if (!t) return false;
+  try {
+    const res = await fetch("/api/admin/overview", {
+      headers: { Authorization: `Bearer ${t}` },
+    });
+    if (!res.ok) return false;
+  } catch {
+    return false;
+  }
+  // Only persisted once the server has actually accepted it — a wrong
+  // key should say so now, not silently stick around failing every load.
+  setOperatorToken(t);
+  return true;
+}
+
+/** GET an operator-only endpoint. Never used for ordinary product calls. */
+export function getOperatorJson<T>(path: string): Promise<T> {
+  return request<T>(path, { headers: operatorHeaders() });
 }
 
 export function adminHeaders(): Record<string, string> {

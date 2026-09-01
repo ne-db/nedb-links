@@ -24,7 +24,13 @@ test("every entry is complete and its Google param is shaped right", () => {
     assert.ok(["free", "premium"].includes(f.tier), `${id} tiered`);
     assert.ok(f.css.length > 5, `${id} has a CSS stack`);
     if (f.google !== null) {
-      assert.match(f.google, /^[A-Za-z+]+(:wght@[\d;]+)?$/, `${id} google param sane: ${f.google}`);
+      // Google Fonts v2 axis grammar: family, optionally :wght@… and/or
+      // :ital@… (Instrument Serif ships an italic axis, no weights).
+      assert.match(
+        f.google,
+        /^[A-Za-z+]+(:(wght|ital)@[\d;]+)?$/,
+        `${id} google param sane: ${f.google}`,
+      );
       assert.equal(f.google.includes(" "), false, `${id} google param has no raw spaces`);
     }
   }

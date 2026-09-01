@@ -132,6 +132,79 @@
  * spectrum drifting in the canvas. Pure CSS3. SpaceX elegance,
  * Porsche restraint.
  */
+[data-theme="kundli"] {
+  /* iKundli — Sukuna's actual India register, read from his shipped
+     source (assets/index-34wTfKLZ.css @theme block), not guessed:
+     bg-primary #FCFAF7, text-primary #120F0D, text-secondary #4A3E39,
+     text-muted #7A6D66, soft-border #E5DDD7, warm-ivory #F7EFE9,
+     warm-cream #EFE4DC. Playfair Display carries the display voice
+     over Outfit body — his real pairing, not a substitute. */
+  color-scheme: light;
+
+  --ink-950: 252 250 247;   /* #FCFAF7 bg-primary */
+  --ink-900: 255 255 255;   /* glass-white — card */
+  --ink-850: 247 239 233;   /* #F7EFE9 warm-ivory, inset */
+  --ink-800: 239 228 220;   /* #EFE4DC warm-cream, border */
+  --ink-700: 229 221 215;   /* #E5DDD7 soft-border, strong */
+
+  --fg: 18 15 13;           /* #120F0D text-primary */
+  --fg-muted: 74 62 57;     /* #4A3E39 text-secondary */
+  --fg-subtle: 122 109 102; /* #7A6D66 text-muted */
+  --fg-faint: 168 154 143;
+
+  /* marigold — his UPI/commerce accent (#F37A20), deepened for AA
+     contrast on porcelain where his own build leans on weight/size. */
+  --accent: 200 92 16;        /* #C85C10 */
+  --accent-soft: 166 74 12;   /* link text on light */
+  --accent-glow: 243 122 32;  /* #F37A20 — his literal UPI orange */
+
+  --glow-alpha: 0.09;
+
+  --radius-card: 1.75rem;     /* ceramic: generous, soft */
+  --radius-ctl: 1rem;
+  --shadow-card: 0 1px 2px rgb(18 15 13 / 0.03), 0 12px 32px -20px rgb(18 15 13 / 0.16);
+  --shadow-card-hover: 0 2px 6px rgb(18 15 13 / 0.05), 0 22px 48px -24px rgb(18 15 13 / 0.22);
+  --shadow-pop: 0 28px 70px -20px rgb(18 15 13 / 0.24);
+  --ring-focus: 0 0 0 3px rgb(var(--accent) / 0.14);
+  --field-border: 229 221 215;
+  --font-display: "Playfair Display", "Instrument Serif", Georgia, serif;
+  --font-body: "Outfit", "Inter", system-ui, sans-serif;
+}
+
+/* SocialProof marquee — two infinite rows, opposite direction, from
+   Sukuna's real component. Edge mask so rows fade instead of clipping. */
+@keyframes kundli-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.333%); }
+}
+@keyframes kundli-marquee-rev {
+  from { transform: translateX(-33.333%); }
+  to { transform: translateX(0); }
+}
+.kundli-marquee-mask {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[kundli-marquee"] {
+    animation: none !important;
+  }
+}
+
+/* The serif display wants air, not tight tracking — undo the sans
+   letter-spacing the other themes rely on. */
+[data-theme="kundli"] .font-display,
+[data-theme="kundli"] h1,
+[data-theme="kundli"] h2 {
+  letter-spacing: -0.015em;
+  font-weight: 400;
+}
+[data-theme="kundli"] .kicker {
+  letter-spacing: 0.18em;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-weight: 700;
+}
+
 [data-theme="mach"] {
   color-scheme: dark;
 

@@ -581,7 +581,7 @@ raffles.get("/api/raffles/:id/leads", requireUser, wrap(async (req, res) => {
 
 // ── Zero-JS public pages: /r/:id (enter) and /r/:id/verify ───────────────────
 
-function pageShell(title: string, body: string): string {
+export function pageShell(title: string, body: string): string {
   const dots = giveawayStops(config.holoColors);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -656,15 +656,39 @@ ${config.faviconUrl ? `<link rel="icon" href="${esc(config.faviconUrl)}" />` : "
   }
   input:autofill { color: #f8fafc; }
 
-  button { position: relative; margin-top: 18px; width: 100%; color: #0b0d11; font-weight: 800; font-size: 15px;
+  /* Payment QR — white plate on purpose. A QR inverted onto a dark card
+     is unreliable to scan on many phone cameras, and this one is the
+     difference between getting paid and not. */
+  .qrwrap { margin-top: 14px; text-align: center; }
+  .qr { display: block; margin: 0 auto 8px; width: 180px; height: 180px;
+        background: #fff; border-radius: 12px; padding: 8px; }
+
+  /* Slot picker — a whole row is the tap target, because a bare radio
+     on a phone is a ~14px dot and this is the step that decides which
+     hour of someone's life gets sold. */
+  label.slot { display: flex; align-items: center; gap: 10px; margin-top: 8px;
+               padding: 12px 14px; border: 1px solid rgb(148 163 184 / .22);
+               border-radius: 12px; cursor: pointer; font-weight: 600;
+               background: rgb(148 163 184 / .05); transition: border-color .15s ease, background .15s ease; }
+  label.slot:hover { border-color: rgb(148 163 184 / .45); background: rgb(148 163 184 / .09); }
+  label.slot:has(input:checked) { border-color: #f8fafc88; background: rgb(248 250 252 / .10); }
+  label.slot input { width: 18px; height: 18px; accent-color: #f8fafc; margin: 0; flex: none; }
+  hr.sep { border: 0; border-top: 1px solid rgb(148 163 184 / .18); margin: 16px 0; }
+
+  /* "a.btn" gives a LINK the same weight as a submit button — needed
+     because the buy page's primary action ("Pay with UPI") is an
+     anchor to a payment-app intent link, not a form submit, and the
+     money step must not read as a footnote next to the form. */
+  a.btn { display: block; text-align: center; text-decoration: none; }
+  button, a.btn { position: relative; margin-top: 18px; width: 100%; color: #0b0d11; font-weight: 800; font-size: 15px;
            letter-spacing: .01em; border: 2px solid rgb(0 0 0 / 0.6); border-radius: 12px; padding: 14px; cursor: pointer;
            background: linear-gradient(120deg, ${linearStops(config.holoColors)}); background-size: 300% 100%;
            animation: gvstream 6s linear infinite;
            box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 10px 30px -10px rgb(0 0 0 / .6);
            transition: transform .12s ease, box-shadow .2s ease; }
   @keyframes gvstream { to { background-position: 300% 0; } }
-  button:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 16px 40px -12px rgb(0 0 0 / .7); animation-duration: 2.5s; }
-  button:active { transform: translateY(0) scale(.985); box-shadow: inset 0 2px 6px rgb(0 0 0 / .5); }
+  button:hover, a.btn:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), 0 16px 40px -12px rgb(0 0 0 / .7); animation-duration: 2.5s; }
+  button:active, a.btn:active { transform: translateY(0) scale(.985); box-shadow: inset 0 2px 6px rgb(0 0 0 / .5); }
 
   /* Scarcity bar — the SAME palette as the ring and button, so the
      page tells one color story instead of three. */
@@ -703,7 +727,7 @@ ${config.faviconUrl ? `<link rel="icon" href="${esc(config.faviconUrl)}" />` : "
              border-radius: 999px; padding: 7px 14px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .card::before, .fill, .win::after, button { animation: none; }
+    .card::before, .fill, .win::after, button, a.btn { animation: none; }
     input:focus, button, .card { transition: none; transform: none; }
   }
 </style></head><body><main>${body}

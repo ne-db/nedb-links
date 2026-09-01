@@ -66,6 +66,8 @@ export const THEMES: Record<string, ThemePalette> = {
   rosegold: { bg: "#140a0d", card: "#24121899", text: "#fff1f2", sub: "#fda4af", accent: "#fb7185" },
   forest:   { bg: "#06110b", card: "#0d1f1599", text: "#f0fdf4", sub: "#86efac", accent: "#22c55e" },
   daylight: { bg: "#f8fafc", card: "#ffffffcc", text: "#0f172a", sub: "#475569", accent: "#0284c7" },
+  /* iKundli's porcelain — the public page wears the landing's identity. */
+  kundli:   { bg: "#fefefe", card: "#faf6f2", text: "#110e0c", sub: "#5a4e46", accent: "#c85c10" },
   mono:     { bg: "#0a0a0a", card: "#16161699", text: "#fafafa", sub: "#a3a3a3", accent: "#e5e5e5" },
   slate:    { bg: "#0b1017", card: "#151d2999", text: "#f1f5f9", sub: "#94a3b8", accent: "#38bdf8" },
   // ── The gradient tier — flagship strength, still one HTML file, zero JS ──
@@ -142,6 +144,63 @@ function iconMarkup(icon: unknown): string {
   return esc(s);
 }
 
+/**
+ * Build a wa.me link from validated parts.
+ *
+ * The phone is re-checked here (digits only) even though the schema
+ * already enforces it — a renderer must never trust that the data it was
+ * handed came through the current schema. Old documents outlive schemas.
+ */
+export function whatsappHref(phone: unknown, message: unknown): string | null {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (!/^[1-9]\d{7,14}$/.test(digits)) return null;
+  const msg = String(message ?? "").trim().slice(0, 300);
+  return `https://wa.me/${digits}${msg ? `?text=${encodeURIComponent(msg)}` : ""}`;
+}
+
+/**
+ * Build a UPI intent from validated parts — payer straight to payee.
+ *
+ * Every component is re-validated and URI-encoded here; nothing the user
+ * typed reaches the href as raw text. Returns null unless the VPA is
+ * well-formed, so a half-filled block renders as nothing rather than as
+ * a broken payment link (a wrong payee address is worse than no button).
+ */
+export function upiHref(d: Record<string, unknown>): string | null {
+  const vpa = String(d.vpa ?? "").trim();
+  if (!/^[a-zA-Z0-9._-]{2,64}@[a-zA-Z][a-zA-Z0-9.]{1,30}$/.test(vpa)) return null;
+  const params = [`pa=${encodeURIComponent(vpa)}`];
+  const payee = String(d.payeeName ?? "").trim().slice(0, 60);
+  if (payee) params.push(`pn=${encodeURIComponent(payee)}`);
+  const amt = typeof d.amount === "number" ? d.amount : Number(d.amount);
+  if (Number.isFinite(amt) && amt > 0) params.push(`am=${amt.toFixed(2)}`);
+  params.push("cu=INR");
+  const note = String(d.note ?? "").trim().slice(0, 80);
+  if (note) params.push(`tn=${encodeURIComponent(note)}`);
+  return `upi://pay?${params.join("&")}`;
+}
+
+/**
+ * The UPI intent for a PRODUCT block.
+ *
+ * Products name their money field `price` (a product has a price; a
+ * payment has an amount), so this maps the product's shape onto the
+ * intent builder rather than letting the two drift. Found the hard way:
+ * calling upiHref() directly on a product silently produced a link with
+ * no `am=`, which opens the payer's app with a blank amount and quietly
+ * pushes the seller's price onto the buyer to retype.
+ */
+export function productUpiHref(d: Record<string, unknown>): string | null {
+  const price = typeof d.price === "number" ? d.price : Number(d.price);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return upiHref({
+    vpa: d.vpa,
+    payeeName: d.payeeName,
+    amount: price,
+    note: d.note ?? d.title,
+  });
+}
+
 function embedFrame(url: string): string | null {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
   if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`;
@@ -190,6 +249,90 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
   <span class="ic">🎁</span>
   <span><b>${esc(d.prize)}</b><i class="gvs">${sub}</i></span>
   <span class="ar">${closed ? "›" : "→"}</span>
+</a>`;
+    }
+    case "whatsapp": {
+      // One tap, chat open, message already typed. Routed through /go so
+      // the owner sees the tap in stats like any other link.
+      const href = whatsappHref(d.phone, d.message);
+      if (!href) return "";
+      const label = String(d.label ?? "").trim() || "Chat on WhatsApp";
+      const glyph = brandGlyph("whatsapp");
+      const icon = glyph
+        ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}"/></svg>`
+        : "💬";
+      return `<a class="lk wa" href="${esc(go(origin, m, b.id, href))}" rel="noopener">
+  <span class="ic">${icon}</span>
+  <span>${esc(label)}</span>
+  <span class="ar">›</span>
+</a>`;
+    }
+    case "upi": {
+      // Payer → payee, direct. We are not in this transaction: no gateway,
+      // no custody, no cut. The VPA is printed in the open because that is
+      // what actually gets people paid — someone whose UPI app doesn't
+      // catch the intent link can still type the address by hand.
+      //
+      // Deliberately absent: any "paid"/"verified" affordance. A UPI intent
+      // has no callback, so this page cannot know. Claiming otherwise would
+      // be the exact kind of rounding-up we don't do.
+      const href = upiHref(d);
+      if (!href) return "";
+      const label = String(d.label ?? "").trim() || "Pay with UPI";
+      const amt = typeof d.amount === "number" ? d.amount : Number(d.amount);
+      const amountTag =
+        Number.isFinite(amt) && amt > 0
+          ? `<i class="upia">₹${esc(amt.toFixed(2).replace(/\.00$/, ""))}</i>`
+          : "";
+      const note = String(d.note ?? "").trim();
+      // Three ways to pay, because one of them only works on a phone.
+      // The intent link is mobile-only: a desktop OS has no handler for
+      // `upi:` and offers whatever it can find (Mark got WhatsApp, which
+      // really is a registered UPI app — correct of the OS, useless to
+      // him). The QR covers desktop, and the printed VPA covers both.
+      return `<a class="lk upi" href="${esc(href)}" rel="noopener">
+  <span class="ic">₹</span>
+  <span><b>${esc(label)}</b>${note ? `<i class="upin">${esc(note)}</i>` : ""}</span>
+  ${amountTag || '<span class="ar">›</span>'}
+</a>
+<details class="upiq">
+  <summary>On a computer? Scan to pay</summary>
+  <img src="${esc(origin)}/upi/${esc(m.identityId)}/${esc(b.id)}.svg"
+       alt="UPI QR code to pay ${esc(String(d.vpa))}" width="180" height="180" loading="lazy" />
+</details>
+<p class="upiv">or pay <code>${esc(String(d.vpa))}</code> from any UPI app</p>`;
+    }
+    case "product": {
+      // A product card that leads to the buy page rather than paying
+      // inline: the buyer needs somewhere to come BACK to after their UPI
+      // app takes over, and that return step is where the reference
+      // number gets captured. `deliverable` is deliberately not rendered.
+      const price = typeof d.price === "number" ? d.price : Number(d.price);
+      if (!d.title || !Number.isFinite(price) || price <= 0 || !productUpiHref(d)) return "";
+      const blurb = String(d.blurb ?? "").trim();
+      return `<a class="lk prod" href="${esc(origin)}/buy/${esc(m.identityId)}/${esc(b.id)}" rel="noopener">
+  <span class="ic">⬗</span>
+  <span><b>${esc(d.title)}</b>${blurb ? `<i class="prods">${esc(blurb)}</i>` : ""}</span>
+  <i class="upia">₹${esc(price.toFixed(2).replace(/\.00$/, ""))}</i>
+</a>`;
+    }
+    case "booking": {
+      // Same destination as a product — the buy page owns slot choice,
+      // payment and the claim. The card's job is just to say what it is
+      // and what it costs.
+      const price = typeof d.price === "number" ? d.price : Number(d.price);
+      const slots = Array.isArray(d.slots) ? (d.slots as unknown[]).filter(Boolean) : [];
+      if (!d.title || !Number.isFinite(price) || price <= 0 || !productUpiHref(d)) return "";
+      // No slots left means nothing to sell; showing the card anyway would
+      // walk someone to a dead end after they'd already decided to buy.
+      if (!slots.length) return "";
+      const meta = [String(d.duration ?? "").trim(), `${slots.length} time${slots.length === 1 ? "" : "s"} open`]
+        .filter(Boolean)
+        .join(" · ");
+      return `<a class="lk prod" href="${esc(origin)}/buy/${esc(m.identityId)}/${esc(b.id)}" rel="noopener">
+  <span class="ic">◷</span>
+  <span><b>${esc(d.title)}</b>${meta ? `<i class="prods">${esc(meta)}</i>` : ""}</span>
+  <i class="upia">₹${esc(price.toFixed(2).replace(/\.00$/, ""))}</i>
 </a>`;
     }
     case "gallery": {
@@ -431,6 +574,44 @@ ${fonts.link}
   .gvw b { display: block; text-shadow: 2px 2px 0 ${giveawayStops(ctx.holoColors)[0]}55; }
   .gvs { display: block; font-style: normal; font-weight: 500; font-size: 12px;
          color: ${t.sub}; margin-top: 2px; }
+
+  /* WhatsApp — the brand green earns its place here: on an Indian phone
+     this glyph IS the affordance, recognised before the label is read. */
+  .wa .ic svg { fill: #25D366; }
+
+  /* UPI — reads as money without shouting. The amount sits where the
+     chevron would, because the price IS the call to action. The VPA line
+     underneath is the fallback path for anyone whose app misses the
+     intent link, and it is deliberately plain text: no fake receipt, no
+     "verified" badge. This page cannot know whether a UPI intent was
+     ever paid, and it must not pretend otherwise. */
+  .upi b { display: block; }
+  .upin { display: block; font-style: normal; font-weight: 500; font-size: 12px;
+          color: ${t.sub}; margin-top: 2px; }
+  .upia { font-style: normal; font-weight: 700; font-size: 15px; color: ${t.accent};
+          white-space: nowrap; margin-left: auto; padding-left: 10px; }
+  .upiv { font-size: 12px; color: ${pageSub(t)}; text-align: center;
+          margin: -4px 0 12px; }
+  /* Scan-to-pay, collapsed by default: on the phones most visitors hold,
+     the intent link above already works and a 180px QR would just push
+     the rest of the page down. <details> keeps it one tap away with no
+     script at all. */
+  .upiq { margin: -2px 0 8px; text-align: center; }
+  .upiq summary { font-size: 12px; color: ${pageSub(t)}; cursor: pointer;
+                  list-style: none; padding: 6px; }
+  .upiq summary::-webkit-details-marker { display: none; }
+  .upiq summary:hover { color: ${t.accent}; }
+  /* White plate, always: a QR inverted onto a dark card scans badly on
+     many phone cameras, and this one is the difference between getting
+     paid and not. */
+  .upiq img { display: block; margin: 6px auto 2px; background: #fff;
+              border-radius: 12px; padding: 8px; width: 180px; height: 180px; }
+  .prod b { display: block; }
+  .prods { display: block; font-style: normal; font-weight: 500; font-size: 12px;
+           color: ${t.sub}; margin-top: 2px; }
+  .upiv code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+               font-size: 12px; color: ${t.text}; background: ${t.card};
+               border-radius: 6px; padding: 2px 6px; }
 
   /* Gallery — a scroll-snap portfolio strip. 82% cards leave the next
      photo peeking in (the swipe affordance); captions sit on the page

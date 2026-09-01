@@ -32,6 +32,7 @@ import { Nav } from "../../src/components/Nav";
 import { Gate } from "../../src/components/Gate";
 import { Footer } from "../../src/components/Footer";
 import { PremiumWelcomeModal } from "../../src/components/PremiumModals";
+import { SalesPanel } from "../../src/components/SalesPanel";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, adminHeaders, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
@@ -91,6 +92,27 @@ function blockSummary(b: Block): string {
       const n = Array.isArray(d.images) ? d.images.length : 0;
       return n ? `${n} photo${n === 1 ? "" : "s"}` : "add your first photo";
     }
+    case "whatsapp":
+      return str(d.phone) ? `+${str(d.phone)}` : "add your WhatsApp number";
+    case "upi": {
+      if (!str(d.vpa)) return "add your UPI ID";
+      const amt = Number(d.amount);
+      return Number.isFinite(amt) && amt > 0
+        ? `${str(d.vpa)} · ₹${amt}`
+        : `${str(d.vpa)} · payer chooses`;
+    }
+    case "booking": {
+      const slots = Array.isArray(d.slots) ? d.slots.length : 0;
+      if (!str(d.vpa)) return "add your UPI ID to take bookings";
+      if (!slots) return "add at least one time slot";
+      if (!str(d.deliverable)) return "add the meeting link";
+      return `₹${Number(d.price) || 0} · ${slots} slot${slots === 1 ? "" : "s"} offered`;
+    }
+    case "product": {
+      if (!str(d.vpa)) return "add your UPI ID to sell this";
+      if (!str(d.deliverable)) return "add the delivery link before you sell";
+      return `₹${Number(d.price) || 0} · delivered on your confirmation`;
+    }
     case "link":
       return str(d.url) || "no url yet";
     case "header":
@@ -117,6 +139,9 @@ function blockTitle(b: Block, fallback: string): string {
   switch (b.type) {
     case "giveaway":
       return str(d.prize) || fallback;
+    case "product":
+    case "booking":
+      return str(d.title) || fallback;
     case "link":
       return str(d.label) || fallback;
     case "embed":
@@ -780,6 +805,326 @@ function BlockFields({
       return <GiveawayFields block={block} onChange={onChange} />;
     case "gallery":
       return <GalleryFields block={block} onChange={onChange} />;
+    case "whatsapp": {
+      const digits = str(d.phone).replace(/\D/g, "");
+      return (
+        <div className="grid gap-3">
+          <div className="grid sm:grid-cols-[1fr_1fr] gap-3">
+            <div>
+              <label className="label">WhatsApp number</label>
+              <div className="flex items-center gap-2 bg-ink-850 border border-ink-800 rounded-2xl px-3 py-2.5">
+                <span className="text-fg-subtle font-mono text-sm shrink-0">+</span>
+                <input
+                  className="flex-1 min-w-0 bg-transparent outline-none font-mono text-sm text-fg placeholder:text-fg-faint"
+                  inputMode="numeric"
+                  placeholder="919876543210"
+                  value={digits}
+                  onChange={(e) => onChange({ ...d, phone: e.target.value.replace(/\D/g, "").slice(0, 15) })}
+                />
+              </div>
+              <p className="text-[11px] text-fg-subtle mt-1.5">
+                Country code first, no spaces or +. India is 91.
+              </p>
+            </div>
+            <div>
+              <label className="label">Button label</label>
+              <input
+                className="field"
+                placeholder="Chat on WhatsApp"
+                value={str(d.label)}
+                onChange={(e) => onChange({ ...d, label: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Pre-filled message (optional)</label>
+            <input
+              className="field"
+              placeholder="Hi! I'd like to book a consultation."
+              value={str(d.message)}
+              onChange={(e) => onChange({ ...d, message: e.target.value.slice(0, 300) })}
+            />
+            <p className="text-[11px] text-fg-subtle mt-1.5">
+              Already typed when the chat opens — it qualifies the lead before they say a word.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    case "booking": {
+      const price = Number(d.price);
+      const slots = Array.isArray(d.slots) ? (d.slots as unknown[]).map((x) => String(x ?? "")) : [];
+      const setSlots = (next: string[]) => onChange({ ...d, slots: next });
+      return (
+        <div className="grid gap-3">
+          <div className="grid sm:grid-cols-[2fr_1fr_1fr] gap-3">
+            <div>
+              <label className="label">What are you offering?</label>
+              <input
+                className="field"
+                placeholder="1:1 Design Review"
+                value={str(d.title)}
+                onChange={(e) => onChange({ ...d, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">How long</label>
+              <input
+                className="field"
+                placeholder="45 mins"
+                value={str(d.duration)}
+                onChange={(e) => onChange({ ...d, duration: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Price (₹)</label>
+              <input
+                className="field"
+                inputMode="decimal"
+                value={Number.isFinite(price) && price > 0 ? String(price) : ""}
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/[^\d.]/g, ""));
+                  onChange({ ...d, price: Number.isFinite(n) ? n : 0 });
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">One line about it</label>
+            <input
+              className="field"
+              placeholder="Portfolio teardown over a call"
+              value={str(d.blurb)}
+              onChange={(e) => onChange({ ...d, blurb: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="label">Times you're offering</label>
+            <div className="grid gap-2">
+              {slots.map((sl, i) => (
+                <div key={i} className="grid grid-cols-[1fr_36px] gap-2">
+                  <input
+                    className="field"
+                    placeholder="Mon 25 Aug, 6:00 PM"
+                    value={sl}
+                    onChange={(e) => setSlots(slots.map((x, j) => (j === i ? e.target.value : x)))}
+                  />
+                  <button
+                    onClick={() => setSlots(slots.filter((_, j) => j !== i))}
+                    className="icon-btn icon-btn-danger self-center"
+                    title="Remove"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setSlots([...slots, ""])}
+                className="justify-self-start text-xs font-semibold text-accent-soft hover:underline underline-offset-4"
+              >
+                + add a time
+              </button>
+            </div>
+            {/* Free text on purpose: parsing dates would mean owning
+                timezones and DST, and getting those subtly wrong means
+                missing a call someone paid for. */}
+            <p className="text-[11px] text-fg-subtle mt-1.5">
+              Write them however your clients read them. Each time can be booked once — it disappears
+              from your page as soon as someone claims it.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-[2fr_1fr] gap-3">
+            <div>
+              <label className="label">Your UPI ID (where the money lands)</label>
+              <input
+                className="field font-mono"
+                placeholder="yourname@okhdfcbank"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={str(d.vpa)}
+                onChange={(e) => onChange({ ...d, vpa: e.target.value.trim() })}
+              />
+            </div>
+            <div>
+              <label className="label">Payee name</label>
+              <input
+                className="field"
+                placeholder="Your name"
+                value={str(d.payeeName)}
+                onChange={(e) => onChange({ ...d, payeeName: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Meeting link (https)</label>
+            <input
+              className="field font-mono"
+              placeholder="https://meet.google.com/..."
+              value={str(d.deliverable)}
+              onChange={(e) => onChange({ ...d, deliverable: e.target.value.trim() })}
+            />
+            <p className="text-[11px] text-fg-subtle mt-1.5 leading-relaxed">
+              <b className="text-fg-muted">Never shown publicly.</b> Sent only after you confirm the
+              payment landed in your bank. Money goes straight to your UPI — we&apos;re not in the
+              transaction and take no fee.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    case "product": {
+      const price = Number(d.price);
+      return (
+        <div className="grid gap-3">
+          <div className="grid sm:grid-cols-[2fr_1fr] gap-3">
+            <div>
+              <label className="label">What are you selling?</label>
+              <input
+                className="field"
+                placeholder="Freelancer Notion OS"
+                value={str(d.title)}
+                onChange={(e) => onChange({ ...d, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Price (₹)</label>
+              <input
+                className="field"
+                inputMode="decimal"
+                value={Number.isFinite(price) && price > 0 ? String(price) : ""}
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/[^\d.]/g, ""));
+                  onChange({ ...d, price: Number.isFinite(n) ? n : 0 });
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">One line about it</label>
+            <input
+              className="field"
+              placeholder="120+ Figma components, instant download"
+              value={str(d.blurb)}
+              onChange={(e) => onChange({ ...d, blurb: e.target.value })}
+            />
+          </div>
+          <div className="grid sm:grid-cols-[2fr_1fr] gap-3">
+            <div>
+              <label className="label">Your UPI ID (where the money lands)</label>
+              <input
+                className="field font-mono"
+                placeholder="yourname@okhdfcbank"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={str(d.vpa)}
+                onChange={(e) => onChange({ ...d, vpa: e.target.value.trim() })}
+              />
+            </div>
+            <div>
+              <label className="label">Payee name</label>
+              <input
+                className="field"
+                placeholder="Your name"
+                value={str(d.payeeName)}
+                onChange={(e) => onChange({ ...d, payeeName: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Delivery link (https)</label>
+            <input
+              className="field font-mono"
+              placeholder="https://drive.google.com/..."
+              value={str(d.deliverable)}
+              onChange={(e) => onChange({ ...d, deliverable: e.target.value.trim() })}
+            />
+            {/* Say the two things a seller most needs to know, where they
+                are deciding — not in a help doc they'll never open. */}
+            <p className="text-[11px] text-fg-subtle mt-1.5 leading-relaxed">
+              <b className="text-fg-muted">Never shown publicly.</b> A buyer pays your UPI directly,
+              sends you their reference number, and you confirm it against your own bank — then we
+              email them this link. We&apos;re not in the transaction and take no fee.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    case "upi": {
+      const amt = Number(d.amount);
+      return (
+        <div className="grid gap-3">
+          <div className="grid sm:grid-cols-[2fr_1fr] gap-3">
+            <div>
+              <label className="label">Your UPI ID</label>
+              <input
+                className="field font-mono"
+                placeholder="yourname@okhdfcbank"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={str(d.vpa)}
+                onChange={(e) => onChange({ ...d, vpa: e.target.value.trim() })}
+              />
+            </div>
+            <div>
+              <label className="label">Payee name</label>
+              <input
+                className="field"
+                placeholder="Your name"
+                value={str(d.payeeName)}
+                onChange={(e) => onChange({ ...d, payeeName: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-[1fr_1fr_1fr] gap-3">
+            <div>
+              <label className="label">Amount (₹)</label>
+              <input
+                className="field"
+                inputMode="decimal"
+                placeholder="0 = they choose"
+                value={Number.isFinite(amt) && amt > 0 ? String(amt) : ""}
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/[^\d.]/g, ""));
+                  onChange({ ...d, amount: Number.isFinite(n) ? n : 0 });
+                }}
+              />
+            </div>
+            <div>
+              <label className="label">Button label</label>
+              <input
+                className="field"
+                placeholder="Pay with UPI"
+                value={str(d.label)}
+                onChange={(e) => onChange({ ...d, label: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Note on the payment</label>
+              <input
+                className="field"
+                placeholder="Design consultation"
+                value={str(d.note)}
+                onChange={(e) => onChange({ ...d, note: e.target.value })}
+              />
+            </div>
+          </div>
+          {/* The limit, stated where the decision is made — not buried in
+              docs. A UPI intent has no callback, so nothing here can tell
+              you the money arrived. Your bank is the receipt. */}
+          <p className="text-[11px] text-fg-subtle leading-relaxed">
+            Payments go <b className="text-fg-muted">straight to your bank</b> — we&apos;re not in the
+            transaction, take no cut, and never hold your money. Because a UPI link has no callback,
+            this page can&apos;t confirm a payment landed: check your own UPI app or bank before you
+            deliver anything.
+          </p>
+        </div>
+      );
+    }
     case "link":
       return (
         <div className="grid sm:grid-cols-[1fr_2fr_72px] gap-3">
@@ -1705,6 +2050,9 @@ export default function EditPage(): React.ReactElement {
                 </div>
               </div>
             </div>
+
+            {/* Sales — only renders once something has actually sold. */}
+            <SalesPanel identityId={manifest.identityId} canSettle={yourRole === "owner"} />
 
             {/* Theme — a gallery, not pills */}
             <div>

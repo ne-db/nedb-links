@@ -13,20 +13,25 @@ import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
 import { accounts } from "./accounts";
+import { admin } from "./admin";
 import { accountsEmail } from "./accounts-email";
 import { analytics, analyticsSummary } from "./analytics";
 import { billing, mountWebhook } from "./billing";
+import { mountCashfreeWebhook } from "./cashfree";
 import { config } from "./config";
 import { db } from "./db";
 import { grants } from "./grants";
 import { handles, identities } from "./identities";
+import { payments } from "./payments";
 import { preview } from "./preview";
+import { purchases, purchasesApi } from "./purchases";
 import { demo } from "./demo";
 import { discover } from "./discover";
 import { qrFlyer, qrStudio } from "./qrstudio";
 import { raffles } from "./raffles";
 import { render } from "./render";
 import { uploads } from "./uploads";
+import { upiQr } from "./upiqr";
 
 export function createApp(): Express {
   const app = express();
@@ -50,6 +55,9 @@ export function createApp(): Express {
   // Stripe webhook needs the raw body for signature verification —
   // mounted before the JSON parser touches anything.
   mountWebhook(app);
+  // Same reason as Stripe's: HMAC is over exact bytes, so this must see
+  // the raw body before any parser rewrites it.
+  mountCashfreeWebhook(app);
   app.use(express.json({ limit: "8mb" }));
   // Zero-JS pages (/r/:id giveaway entry, confirm) submit real HTML
   // <form method="post"> — the browser sends application/x-www-form-
@@ -83,6 +91,8 @@ export function createApp(): Express {
     res.json({
       authMode: config.authMode,
       brandName: config.brandName,
+      brandKey: config.brandKey,
+      currency: config.currency,
       brandLogoUrl: config.brandLogoUrl || undefined,
       defaultTheme: config.defaultTheme,
       fiatDoor: Boolean(config.stripeSecretKey),
@@ -99,12 +109,15 @@ export function createApp(): Express {
   // ── API ───────────────────────────────────────────────────────────────────
   // ONE account system per deployment. The other product's endpoints
   // don't exist here — wallet routes 404 on ne-db.com and vice versa.
+  app.use("/api/admin", admin);
   app.use("/api/auth", config.authMode === "email" ? accountsEmail : accounts);
   app.use("/api/analytics", analyticsSummary);
   app.use("/api/billing", billing);
   app.use("/api/handles", handles);
   app.use("/api/identities/:id/analytics", analytics);
   app.use("/api/identities/:id/grants", grants);
+  app.use("/api/identities/:id/payments", payments);
+  app.use("/api/identities/:id/purchases", purchasesApi);
   app.use("/api/identities/:id/qr", qrStudio);
   app.use("/api/identities", identities);
   app.use("/api/preview", preview);
@@ -173,6 +186,8 @@ export function createApp(): Express {
   // Discover mounts BEFORE /:handle so the directory wins the route.
   app.use(discover);
   app.use(raffles); // /r/:id pages + /api/raffles — before /:handle
+  app.use(upiQr); // /upi/:identityId/:blockId.svg — before /:handle
+  app.use(purchases); // /buy/:identityId/:blockId — before /:handle
   app.use(demo); // /demo — the homepage's live "what done looks like"
   app.use(qrFlyer); // /qr/flyer/:id — print sheet, before /:handle
   app.use(render);

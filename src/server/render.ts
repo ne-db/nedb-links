@@ -11,7 +11,7 @@
 
 import { Router } from "express";
 
-import { COLLECTIONS } from "../lib/identity";
+import { track } from "./events";
 import { getRenderer } from "../lib/registry";
 import "../lib/renderers/html";
 import "../lib/renderers/json";
@@ -20,7 +20,6 @@ import "../lib/renderers/qr";
 import "../lib/renderers/vcard";
 import "../lib/renderers/card";
 import { config } from "./config";
-import { db } from "./db";
 import { getManifest, resolveHandle } from "./identities";
 import { wrap } from "./util";
 
@@ -28,14 +27,6 @@ export const render = Router();
 
 function originOf(req: { protocol: string; get(h: string): string | undefined }): string {
   return config.publicOrigin || `${req.protocol}://${req.get("host") ?? "localhost"}`;
-}
-
-/** Append-only, fire-and-forget. A failed analytics write never blocks a render. */
-function track(event: Record<string, unknown>): void {
-  const id = `evt_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
-  db.put(COLLECTIONS.events, id, { ...event, ts: new Date().toISOString() }).catch((err) => {
-    console.warn(`[links] event write failed: ${err instanceof Error ? err.message : err}`);
-  });
 }
 
 /** GET /go/:identityId/:blockId?to=… — outbound click tracking. */

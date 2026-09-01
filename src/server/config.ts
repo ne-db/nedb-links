@@ -18,6 +18,13 @@ export interface LinksConfig {
   authMode: AuthMode;
   /** Deployment wordmark — nav, page title, emails, public footers. */
   brandName: string;
+  /** Which storefront WIREFRAME this deployment wears. "default" is the
+   *  claim-first homepage every deployment has always had; "kundli" is
+   *  the India storefront (Sukuna's landing). Product, auth, renderer
+   *  and gates stay identical — only the marketing surface changes. */
+  brandKey: string;
+  /** ISO 4217 for money the storefront quotes (USD default, INR India). */
+  currency: string;
   /** App theme for first-time visitors (until they pick their own). */
   defaultTheme: string;
 
@@ -91,7 +98,13 @@ export function loadConfig(): LinksConfig {
     port: Number(process.env.LINKS_API_PORT || process.env.PORT || 3001),
     authMode,
     brandName: (process.env.LINKS_BRAND_NAME || "NEDB Links").slice(0, 40),
-    defaultTheme: ["pro", "native", "v3", "mach"].includes(process.env.LINKS_DEFAULT_THEME || "")
+    brandKey: ["default", "kundli"].includes(process.env.LINKS_BRAND_KEY || "")
+      ? (process.env.LINKS_BRAND_KEY as string)
+      : "default",
+    currency: /^[A-Z]{3}$/.test(process.env.LINKS_CURRENCY || "")
+      ? (process.env.LINKS_CURRENCY as string)
+      : "USD",
+    defaultTheme: ["pro", "native", "v3", "mach", "kundli"].includes(process.env.LINKS_DEFAULT_THEME || "")
       ? (process.env.LINKS_DEFAULT_THEME as string)
       : "pro",
     smtpHost: process.env.SMTP_HOST || undefined,

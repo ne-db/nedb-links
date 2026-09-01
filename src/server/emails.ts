@@ -596,3 +596,114 @@ export function grantInviteEmail(opts: {
     ].join("\n"),
   };
 }
+
+// ── 11 · Digital product: a buyer says they paid ─────────────────────────────
+
+/**
+ * Notifies the SELLER that someone claims to have paid.
+ *
+ * Deliberately worded as a claim, never a confirmation: on Tier-1 UPI
+ * rails nothing has verified this payment, and the seller's own bank app
+ * is the only source of truth. An email that said "you've been paid"
+ * would be the platform asserting something it cannot know.
+ */
+export function productClaimEmail(opts: {
+  to: string;
+  title: string;
+  price: number;
+  reference: string;
+  buyerEmail: string;
+  handle: string;
+  /** Bookings: the time they picked. Held, not confirmed. */
+  slot?: string;
+}): OutgoingMail {
+  const amount = `₹${opts.price.toFixed(2).replace(/\.00$/, "")}`;
+  const html = shell({
+    preheader: `${opts.buyerEmail} says they paid ${amount} for ${opts.title}. Check your bank, then release it.`,
+    kicker: "someone wants your product",
+    content: [
+      heading("A buyer says they've paid"),
+      paragraph(
+        `<b>${esc(opts.buyerEmail)}</b> claims to have sent <b>${esc(amount)}</b> for <b>${esc(opts.title)}</b>.`,
+        { center: true },
+      ),
+      paragraph(
+        `UPI reference: <b>${esc(opts.reference)}</b>${opts.slot ? `<br />Slot held: <b>${esc(opts.slot)}</b>` : ""}`,
+        { center: true, muted: true },
+      ),
+      divider(),
+      paragraph(
+        "Check this reference in your own UPI app or bank statement first. Once you can see the money, confirm it in your editor and we'll email them the download straight away.",
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: `You're receiving this because you sell a digital product on @${esc(opts.handle)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: `${amount} claimed for ${opts.title} — ref ${opts.reference}`,
+    html,
+    text: [
+      `${BRAND_UP} — A BUYER SAYS THEY PAID`,
+      "",
+      `Product: ${opts.title}`,
+      `Amount:  ${amount}`,
+      `Ref:     ${opts.reference}`,
+      ...(opts.slot ? [`Slot:    ${opts.slot} (held, not yet confirmed)`] : []),
+      `Buyer:   ${opts.buyerEmail}`,
+      "",
+      "Nothing here is verified — check the reference against your own bank,",
+      "then confirm in your editor to release the download.",
+    ].join("\n"),
+  };
+}
+
+// ── 12 · Digital product: delivery ───────────────────────────────────────────
+
+export function productDeliveryEmail(opts: {
+  to: string;
+  title: string;
+  deliverable: string;
+  handle: string;
+  /** Bookings: the confirmed time. Restated so the buyer has it in writing. */
+  slot?: string;
+}): OutgoingMail {
+  const html = shell({
+    preheader: opts.slot
+      ? `Your booking for ${opts.title} is confirmed — ${opts.slot}.`
+      : `Your download for ${opts.title} is ready.`,
+    kicker: "payment confirmed",
+    content: [
+      heading(opts.slot ? "You're booked in" : "Here's your download"),
+      paragraph(
+        opts.slot
+          ? `@${esc(opts.handle)} confirmed your payment for <b>${esc(opts.title)}</b>.<br />Your time: <b>${esc(opts.slot)}</b>`
+          : `@${esc(opts.handle)} confirmed your payment for <b>${esc(opts.title)}</b>. It's all yours:`,
+        { center: true },
+      ),
+      button(opts.slot ? "Join the call" : "Get it now", opts.deliverable),
+      fallbackUrl(opts.deliverable),
+      divider(),
+      paragraph(
+        "Save this email — it's your copy of the link. Any problem with the file, reply to the seller directly.",
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: `You're receiving this because you bought ${esc(opts.title)} from @${esc(opts.handle)} on ${esc(BRAND)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: opts.slot ? `Booking confirmed — ${opts.title}, ${opts.slot}` : `Your download — ${opts.title}`,
+    html,
+    text: [
+      opts.slot ? `${BRAND_UP} — YOUR BOOKING IS CONFIRMED` : `${BRAND_UP} — YOUR DOWNLOAD IS READY`,
+      "",
+      `@${opts.handle} confirmed your payment for ${opts.title}.`,
+      ...(opts.slot ? [`Your time: ${opts.slot}`] : []),
+      "",
+      `${opts.slot ? "Join" : "Get it"}: ${opts.deliverable}`,
+      "",
+      "Save this email — it's your copy of the link.",
+    ].join("\n"),
+  };
+}

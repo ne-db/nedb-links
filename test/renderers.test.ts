@@ -531,6 +531,84 @@ test("gallery block: swipeable, lazy, escaped, https-only — empty renders noth
   assert.equal(gal([]).includes('class="gal"'), false, "empty gallery renders nothing (saves never walled)");
 });
 
+test("whatsapp block: wa.me from validated digits, message encoded, junk renders nothing", () => {
+  const wa = (data: Record<string, unknown>) =>
+    renderProfileHtml(
+      fixture({ blocks: [{ id: "blk_w", type: "whatsapp", order: 0, data }] }),
+      CTX,
+    );
+
+  const html = wa({ phone: "919876543210", label: "Chat with me", message: "Hi! Booking?" });
+  assert.ok(html.includes("class=\"lk wa\""), "whatsapp block renders");
+  assert.ok(html.includes("Chat with me"), "custom label renders");
+  // Routed through /go, so the wa.me target arrives URL-encoded inside ?to=.
+  assert.ok(html.includes(encodeURIComponent("https://wa.me/919876543210")), "wa.me link built from digits");
+  // encodeURIComponent leaves "!" unreserved, so the inner encoding is
+  // `text=Hi!%20Booking%3F`; go() then encodes that whole string again.
+  assert.ok(
+    html.includes(encodeURIComponent("?text=Hi!%20Booking%3F")),
+    "message is encoded, not raw",
+  );
+  assert.equal(html.includes("Hi! Booking?"), false, "raw message never lands in the href");
+
+  assert.equal(wa({ phone: "" }).includes("lk wa"), false, "empty number renders nothing");
+  assert.equal(wa({ phone: "012345678" }).includes("lk wa"), false, "leading zero is not E.164");
+  assert.equal(wa({ phone: "123" }).includes("lk wa"), false, "too short to be a number");
+
+  // A renderer must not trust that old documents came through today's schema.
+  const dirty = wa({ phone: "+91 98765 43210", label: "x" });
+  assert.ok(dirty.includes(encodeURIComponent("https://wa.me/919876543210")), "punctuation stripped, not rejected");
+
+  const evil = wa({ phone: "919876543210", label: '<script>alert(1)</script>' });
+  assert.equal(evil.includes("<script>"), false, "label cannot inject markup");
+});
+
+test("upi block: intent built from parts, no fake receipt, bad VPA renders nothing", () => {
+  const upi = (data: Record<string, unknown>) =>
+    renderProfileHtml(fixture({ blocks: [{ id: "blk_u", type: "upi", order: 0, data }] }), CTX);
+
+  const html = upi({
+    vpa: "aisha@okhdfcbank",
+    payeeName: "Aisha Sharma",
+    amount: 499,
+    note: "Design kit",
+    label: "Buy the kit",
+  });
+  assert.ok(html.includes("upi://pay?pa=aisha%40okhdfcbank"), "intent addresses the creator's own VPA");
+  assert.ok(html.includes("am=499.00"), "fixed amount is two-decimal");
+  assert.ok(html.includes("cu=INR"), "currency is explicit");
+  assert.ok(html.includes(`tn=${encodeURIComponent("Design kit")}`), "note is encoded");
+  assert.ok(html.includes("Buy the kit"), "custom label renders");
+  assert.ok(html.includes("<code>aisha@okhdfcbank</code>"), "VPA printed for hand-entry fallback");
+
+  // The honesty contract: a UPI intent has no callback, so the page must
+  // never imply the money arrived. If this ever starts failing, the fix is
+  // to delete the claim, not the assertion. Comments are stripped first —
+  // the contract is about what a VISITOR reads, and the stylesheet's own
+  // comments explain (in those words) why we make no such claim.
+  const visible = html.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
+  assert.equal(
+    /\b(paid|verified|payment received|confirmed)\b/i.test(visible),
+    false,
+    "no fake receipt state",
+  );
+
+  // Payer-chooses: no am= at all, rather than am=0.00 (which some apps reject).
+  const open = upi({ vpa: "aisha@okhdfcbank", amount: 0 });
+  assert.equal(open.includes("am="), false, "amount omitted entirely when payer chooses");
+
+  assert.equal(upi({ vpa: "" }).includes("upi://"), false, "empty VPA renders nothing");
+  assert.equal(upi({ vpa: "not-a-vpa" }).includes("upi://"), false, "malformed VPA renders nothing");
+  assert.equal(
+    upi({ vpa: "a@b", amount: 1 }).includes("upi://"),
+    false,
+    "too-short VPA rejected — a wrong payee is worse than no button",
+  );
+
+  const evil = upi({ vpa: "aisha@okhdfcbank", note: '"><script>alert(1)</script>' });
+  assert.equal(evil.includes("<script>"), false, "note cannot inject markup");
+});
+
 test("custom SEO: overrides render escaped, share image upgrades the card, fallbacks hold", () => {
   const withSeo = renderProfileHtml(
     fixture({
@@ -572,4 +650,17 @@ test("link labels center on the card — icon or not; the giveaway stays poster-
     /\.gvw > span:not\(\.ic\):not\(\.ar\) \{ text-align: left/,
     "giveaway keeps its poster layout",
   );
+});
+
+test("the kundli porcelain theme renders a light page with readable ink", async () => {
+  const html = renderProfileHtml(fixture({ theme: "kundli" }), CTX);
+  assert.ok(html.includes("background: #fefefe"), "porcelain canvas");
+  assert.ok(html.includes("#110e0c"), "near-black ink");
+  assert.ok(html.includes("#c85c10"), "marigold accent");
+  // The readability contract: the card surface must differ from the
+  // canvas, or every card vanishes into a white page.
+  const { THEMES } = await import("../src/lib/renderers/html");
+  const k = THEMES.kundli;
+  assert.notEqual(k.card.toLowerCase(), k.bg.toLowerCase(), "cards are distinguishable from the canvas");
+  assert.ok(html.includes(k.card), "warm card surface reaches the page");
 });

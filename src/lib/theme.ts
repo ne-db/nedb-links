@@ -6,11 +6,14 @@
  *            blue, elevated cards, Inter Tight. Less dashboard, more app.
  *   mach   — silver slick at mach 5. Gunmetal + chrome, color as motion:
  *            streaming light trails, brushed metal, SpaceX elegance.
+ *   kundli — warm porcelain. Near-white canvas, near-black ink, an
+ *            Instrument Serif display over Outfit, ceramic-glass cards
+ *            and a marigold accent. Sukuna's iKundli register (India).
  *
  * Persisted per browser; restored before first paint by index.html.
  */
 
-export const THEME_ORDER = ["pro", "native", "v3", "mach"] as const;
+export const THEME_ORDER = ["pro", "native", "v3", "mach", "kundli"] as const;
 export type ThemeName = (typeof THEME_ORDER)[number];
 
 export const THEME_LABELS: Record<ThemeName, string> = {
@@ -18,6 +21,7 @@ export const THEME_LABELS: Record<ThemeName, string> = {
   native: "◆ native",
   v3: "✦ signal",
   mach: "» mach",
+  kundli: "❋ kundli",
 };
 
 export const THEME_KEY = "links-theme";
@@ -26,7 +30,7 @@ export function isThemeName(t: unknown): t is ThemeName {
   return typeof t === "string" && (THEME_ORDER as readonly string[]).includes(t);
 }
 
-/** Pure cycle: pro → native → v3 → mach → pro. Exported for tests. */
+/** Pure cycle: pro → native → v3 → mach → kundli → pro. Exported for tests. */
 export function nextTheme(t: ThemeName): ThemeName {
   const i = THEME_ORDER.indexOf(t);
   return THEME_ORDER[(i + 1) % THEME_ORDER.length];

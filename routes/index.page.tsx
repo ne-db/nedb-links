@@ -1,15 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { BarChart3, Check, Contact, Crown, Gift, Link2, Palette, QrCode, ShieldCheck, Sparkles } from "lucide-react";
 
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
+import { KundliLanding } from "../src/components/KundliLanding";
 import { Nav } from "../src/components/Nav";
 import { Footer } from "../src/components/Footer";
 import { Gate } from "../src/components/Gate";
 import { UpgradeCard } from "../src/components/UpgradeCard";
-import { adminHeaders } from "../src/lib/api";
+import { useClaimFlow, type Availability } from "../src/lib/useClaimFlow";
 import { useAppConfig } from "../src/lib/useAppConfig";
-import { isValidHandle, type Block } from "../src/lib/identity";
+import { type Block } from "../src/lib/identity";
 import { listTemplates } from "../src/lib/registry";
 import { THEMES } from "../src/lib/renderers/html";
 
@@ -20,7 +21,6 @@ export const intent = {
   seoKeyword: "link in bio identity platform",
 };
 
-type Availability = "idle" | "checking" | "available" | "taken" | "invalid";
 
 /**
  * The template gallery — show, don't quiz. Each card is a miniature of
@@ -191,6 +191,11 @@ function ShareKit({
 export default function ClaimPage(): React.ReactElement {
   const cfg = useAppConfig();
   const emailMode = cfg?.authMode === "email";
+  // Storefronts are WIREFRAMES, selected by env — not forks. iKundli
+  // (India) sells with its own landing; the product underneath is
+  // byte-identical. Config arrives async, so hold the default until it
+  // lands rather than flashing the wrong storefront.
+  const kundli = cfg?.brandKey === "kundli";
   // Seed each template once for its gallery card — the mini previews
   // show the REAL scaffold (blocks + theme), not a label.
   const templates = useMemo(
@@ -201,109 +206,27 @@ export default function ClaimPage(): React.ReactElement {
       }),
     [],
   );
-  const [handle, setHandle] = useState("");
-  const [availability, setAvailability] = useState<Availability>("idle");
-  const [displayName, setDisplayName] = useState("");
-  const [template, setTemplate] = useState<string>("creator");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [claimed, setClaimed] = useState<{ identityId: string; handle: string } | null>(null);
-  const [published, setPublished] = useState(false);
-  const [locked, setLocked] = useState(false);
-  const [needsUpgrade, setNeedsUpgrade] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const normalized = handle.toLowerCase().trim();
-
-  // Live availability — the claim experience begins here.
-  useEffect(() => {
-    if (timer.current) clearTimeout(timer.current);
-    if (!normalized) {
-      setAvailability("idle");
-      return;
-    }
-    if (!isValidHandle(normalized)) {
-      setAvailability("invalid");
-      return;
-    }
-    setAvailability("checking");
-    timer.current = setTimeout(async () => {
-      try {
-        const r = await fetch(`/api/handles/${encodeURIComponent(normalized)}/availability`);
-        const j = (await r.json()) as { available: boolean };
-        setAvailability(j.available ? "available" : "taken");
-      } catch {
-        setAvailability("idle");
-      }
-    }, 250);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [normalized]);
-
-  const claim = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await fetch("/api/identities", {
-        method: "POST",
-        headers: { "content-type": "application/json", ...adminHeaders() },
-        body: JSON.stringify({
-          handle: normalized,
-          displayName: displayName || normalized,
-          template,
-        }),
-      });
-      if (r.status === 401) {
-        setLocked(true);
-        return;
-      }
-      if (r.status === 402) {
-        // Free profile used — show the two-door upgrade.
-        setNeedsUpgrade(true);
-        return;
-      }
-      const j = (await r.json()) as {
-        manifest?: { identityId: string; handle: string };
-        error?: string;
-      };
-      if (!r.ok || !j.manifest) {
-        setError(j.error ?? `claim failed (${r.status})`);
-        return;
-      }
-      setClaimed({ identityId: j.manifest.identityId, handle: j.manifest.handle });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "claim failed");
-    } finally {
-      setBusy(false);
-    }
-  }, [normalized, displayName, template]);
-
-  const publish = useCallback(async () => {
-    if (!claimed) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await fetch(`/api/identities/${encodeURIComponent(claimed.identityId)}/publish`, {
-        method: "POST",
-        headers: adminHeaders(),
-      });
-      if (r.status === 401) {
-        setLocked(true);
-        return;
-      }
-      if (!r.ok) {
-        const j = (await r.json()) as { error?: string };
-        setError(j.error ?? `publish failed (${r.status})`);
-        return;
-      }
-      setPublished(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "publish failed");
-    } finally {
-      setBusy(false);
-    }
-  }, [claimed]);
+  // The claim flow lives in a shared hook — the iKundli storefront runs
+  // the exact same implementation, so a fix here fixes every brand.
+  const {
+    handle,
+    setHandle,
+    availability,
+    displayName,
+    setDisplayName,
+    template,
+    setTemplate,
+    busy,
+    error,
+    locked,
+    setLocked,
+    needsUpgrade,
+    setNeedsUpgrade,
+    claimed,
+    published,
+    claim,
+    publish,
+  } = useClaimFlow();
 
   const badge: Record<Availability, React.ReactElement | null> = {
     idle: null,
@@ -312,6 +235,11 @@ export default function ClaimPage(): React.ReactElement {
     taken: <span className="text-signal-red text-sm font-semibold">taken</span>,
     invalid: <span className="text-signal-amber text-sm font-semibold">2–40 chars, a–z 0–9 -</span>,
   };
+
+  // iKundli sells with its own wireframe. Placed after every hook so
+  // the rules of hooks hold; config arrives async, so the default
+  // storefront only renders once we know which brand we are.
+  if (kundli) return <KundliLanding />;
 
   return (
     <>
