@@ -250,6 +250,57 @@ async function beaconAfterClose(closesAt: string): Promise<{
  * who can rent addresses is a bad trade.
  */
 
+
+/**
+ * ENTRY IS ONE STEP — Mark's call, 2026-09-01: "its getting people to
+ * give up." The six-digit code was costing more real entrants than the
+ * fake ones it stopped.
+ *
+ * The email still goes out; it is now a RECEIPT, not a gate. The entrant
+ * gets their ticket the instant they submit, and the mail carries the
+ * ticket id and the verify link for their records.
+ *
+ * What still holds the draw together: ONE ENTRY PER EMAIL, the spots cap,
+ * and the commitment/verify math — none of which the code step was doing.
+ * What we genuinely give up: proof the address is reachable. That matters
+ * for exactly one person, the winner, so it moves to where it costs one
+ * follow-up instead of taxing all 200 entrants.
+ *
+ * Reversible without a deploy: LINKS_RAFFLE_VERIFY=1 restores the code
+ * step (the confirm routes are left intact for exactly that reason).
+ */
+function verifyEmails(): boolean {
+  return process.env.LINKS_RAFFLE_VERIFY === "1";
+}
+
+/** Mint a ticket and mail the receipt. Shared by the API and form paths. */
+async function issueTicket(
+  r: RaffleDoc,
+  data: { name: string; phone: string; email: string },
+  principal: string,
+): Promise<EntryDoc> {
+  const entry: EntryDoc = {
+    ticketId: `tkt_${randomBytes(8).toString("hex")}`,
+    raffleId: r.raffleId,
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    principal,
+    confirmedAt: new Date().toISOString(),
+  };
+  await db.put(COLLECTIONS.raffleEntries, entry.ticketId, entry as unknown as Record<string, unknown>, {
+    evidence: `giveaway entry ${entry.ticketId} in ${r.raffleId}`,
+  });
+  // Fire-and-forget: a mail hiccup must never cost someone their place.
+  // Under the old flow a failed send blocked the entry entirely.
+  sendMail(giveawayTicketEmail({
+    to: entry.email, name: entry.name, ticketId: entry.ticketId, prize: r.prize,
+    handle: r.handle, closesAt: r.closesAt,
+    verifyUrl: `${config.publicOrigin || ""}/r/${r.raffleId}/verify`,
+  })).catch((err) => console.warn(`[links] ticket receipt failed: ${err instanceof Error ? err.message : err}`));
+  return entry;
+}
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 export const raffles = Router();
@@ -300,6 +351,12 @@ raffles.post("/api/raffles/:id/enter", wrap(async (req, res) => {
   }
   if (r.maxEntries && all.length >= r.maxEntries) {
     res.status(409).json({ error: "all spots are taken — this one filled up" });
+    return;
+  }
+
+  if (!verifyEmails()) {
+    const entry = await issueTicket(r, body.data, principal);
+    res.json({ ok: true, ticketId: entry.ticketId });
     return;
   }
 
@@ -770,7 +827,7 @@ ${spotsBar}
   <label>Phone</label><input name="phone" type="tel" autocomplete="tel" required maxlength="30" />
   <label>Email</label><input name="email" type="email" autocomplete="email" required maxlength="254" />
   <button>Enter the giveaway</button>
-  <p class="fine">We'll email you a 6-digit code to confirm your entry. By entering you share your
+  <p class="fine">You'll get your ticket straight away, and a copy by email. By entering you share your
   name, phone, and email with @${esc(r.handle)} and agree to be contacted about this giveaway.
   One entry per person — every entry has an equal shot (<a href="/fair">how draws stay honest</a>).</p>
 </form></div>`;
@@ -817,6 +874,18 @@ raffles.post("/r/:id/enter", wrap(async (req, res) => {
     res.send(pageShell("Full", `<h1>All spots are taken</h1><p class="sub">This one filled up. The draw is still on — <a href="/r/${esc(r.raffleId)}/verify">watch it settle</a>.</p>${back}`));
     return;
   }
+  if (!verifyEmails()) {
+    const entry = await issueTicket(r, parsed.data, principal);
+    res.send(pageShell("You're in", `<h1>You're in ✓</h1>
+<p class="sub">Your ticket for <b>${esc(r.prize)}</b>:</p>
+<div class="card"><div class="win mono">${esc(entry.ticketId)}</div>
+<p class="fine">Keep this id — it's your ticket in the draw, and it never shows your name.
+We've emailed you a copy. When the winner is picked,
+<a href="/r/${esc(r.raffleId)}/verify">anyone can check it was fair</a>.
+Drawing ${esc(new Date(effectiveClose(r)).toUTCString())}.</p></div>`));
+    return;
+  }
+
   const code = String(randomInt(0, 1000000)).padStart(6, "0");
   const pendingId = `rfe_${randomBytes(12).toString("hex")}`;
   await db.put(COLLECTIONS.challenges, pendingId, {
