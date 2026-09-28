@@ -117,14 +117,11 @@ test("mint: saving a giveaway block publishes the commitment before any entry", 
   assert.ok(page.includes("gvw"), "holographic card class present");
 });
 
-test("enter: verified email → ticket; duplicates and overflow bounce", async () => {
+test("enter: email → immediate ticket; duplicates and overflow bounce", async () => {
   // Entrant one.
   const e1 = await post(`/api/raffles/${raffleId}/enter`, { name: "Ana", phone: "+1 407 555 0001", email: "ana@probe.test" });
   assert.equal(e1.status, 200);
-  const p1 = ((await e1.json()) as { pendingId: string }).pendingId;
-  const c1 = await post(`/api/raffles/${raffleId}/confirm`, { pendingId: p1, code: codeFor("ana@probe.test") });
-  assert.equal(c1.status, 201);
-  const t1 = ((await c1.json()) as { ticketId: string }).ticketId;
+  const t1 = ((await e1.json()) as { ticketId: string }).ticketId;
   assert.match(t1, /^tkt_[a-f0-9]{16}$/);
   assert.ok(lastMailTo("ana@probe.test").includes(t1), "ticket email carries the ticket id");
 
@@ -134,9 +131,8 @@ test("enter: verified email → ticket; duplicates and overflow bounce", async (
 
   // Entrant two fills the cap.
   const e2 = await post(`/api/raffles/${raffleId}/enter`, { name: "Ben", phone: "+1 407 555 0002", email: "ben@probe.test" });
-  const p2 = ((await e2.json()) as { pendingId: string }).pendingId;
-  const c2 = await post(`/api/raffles/${raffleId}/confirm`, { pendingId: p2, code: codeFor("ben@probe.test") });
-  assert.equal(c2.status, 201);
+  assert.equal(e2.status, 200);
+  assert.match(((await e2.json()) as { ticketId: string }).ticketId, /^tkt_[a-f0-9]{16}$/);
 
   // Entrant three: all spots taken.
   const e3 = await post(`/api/raffles/${raffleId}/enter`, { name: "Cy", phone: "+1 407 555 0003", email: "cy@probe.test" });
@@ -256,22 +252,14 @@ test("the zero-JS entry form: real url-encoded POSTs, not JSON — this is what 
     await formPost(`/r/${rid}/enter`, { name: "Dana Real", phone: "+1 407 555 0099", email: "dana@probe.test" })
   ).text();
   assert.equal(enterHtml.includes("Something&#39;s missing") || enterHtml.includes("Something's missing"), false, "the entry the visitor typed must be READ — not reported missing");
-  assert.ok(enterHtml.includes("Check your inbox") || enterHtml.includes("check your inbox"), "real submission reaches the code-sent step");
+  assert.ok(enterHtml.includes("You're in"), "real submission issues a ticket immediately");
 
-  const code = codeFor("dana@probe.test");
-  const pendingMatch = lastMailTo("dana@probe.test"); // sanity: mail actually fired for this entry
-  assert.ok(pendingMatch.length > 0);
-
-  // Pull the pendingId the same way a browser would have it: from the
-  // hidden field the server just rendered.
-  const pendingIdMatch = enterHtml.match(/name="pendingId" value="([^"]+)"/);
-  assert.ok(pendingIdMatch, "confirm form carries the pending id");
-
-  const confirmHtml = await (
-    await formPost(`/r/${rid}/confirm`, { pendingId: pendingIdMatch![1], code })
-  ).text();
-  assert.ok(confirmHtml.includes("You're in"), "real form-encoded confirm actually redeems a ticket");
-  const ticketMatch = confirmHtml.match(/class="win mono">(tkt_[a-f0-9]+)</);
+  const ticketMatch = enterHtml.match(/class="win mono">(tkt_[a-f0-9]+)</);
+  assert.ok(ticketMatch, "a real ticket id renders back to the browser");
+  assert.ok(
+    lastMailTo("dana@probe.test").includes(ticketMatch[1]),
+    "ticket receipt carries the same ticket id",
+  );
   assert.ok(ticketMatch, "a real ticket id renders back to the browser");
 
   // And it's really persisted — the owner's leads reflect the same entry.
@@ -298,11 +286,9 @@ test("end & draw now: the owner stops entries at will and the winner settles in 
   const rid = ((await put.json()) as { manifest: { blocks: Array<{ data: { raffleId?: string } }> } })
     .manifest.blocks[0].data.raffleId ?? "";
 
-  // One verified entrant.
   const e = await post(`/api/raffles/${rid}/enter`, { name: "Willa", phone: "+1 407 555 0200", email: "willa@probe.test" });
-  const pendingId = ((await e.json()) as { pendingId: string }).pendingId;
-  const c = await post(`/api/raffles/${rid}/confirm`, { pendingId, code: codeFor("willa@probe.test") });
-  assert.equal(c.status, 201);
+  assert.equal(e.status, 200);
+  assert.match(((await e.json()) as { ticketId: string }).ticketId, /^tkt_[a-f0-9]{16}$/);
 
   // A stranger can't end it.
   const stranger = await post(`/api/raffles/${rid}/end`);
@@ -343,9 +329,8 @@ test("lazy auto-draw: a closed giveaway settles itself on the first view — no 
     .manifest.blocks[0].data.raffleId ?? "";
 
   const e = await post(`/api/raffles/${rid}/enter`, { name: "Otto", phone: "+1 407 555 0300", email: "otto@probe.test" });
-  const pendingId = ((await e.json()) as { pendingId: string }).pendingId;
-  const c = await post(`/api/raffles/${rid}/confirm`, { pendingId, code: codeFor("otto@probe.test") });
-  assert.equal(c.status, 201);
+  assert.equal(e.status, 200);
+  assert.match(((await e.json()) as { ticketId: string }).ticketId, /^tkt_[a-f0-9]{16}$/);
 
   await new Promise((r) => setTimeout(r, 2400)); // let it close by clock
 

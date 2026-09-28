@@ -101,6 +101,16 @@ function blockSummary(b: Block): string {
         ? `${str(d.vpa)} · ₹${amt}`
         : `${str(d.vpa)} · payer chooses`;
     }
+    case "hireme": {
+      if (!str(d.interviewTypeId)) {
+        return "connect an interview type to publish this link";
+      }
+
+      const duration = Number(d.durationMinutes) || 30;
+      return d.active === false
+        ? `${duration} min · bookings paused`
+        : `${duration} min · accepting interviews`;
+    }
     case "booking": {
       const slots = Array.isArray(d.slots) ? d.slots.length : 0;
       if (!str(d.vpa)) return "add your UPI ID to take bookings";
@@ -848,6 +858,414 @@ function BlockFields({
               Already typed when the chat opens — it qualifies the lead before they say a word.
             </p>
           </div>
+        </div>
+      );
+    }
+    case "hireme": {
+      const durationMinutes =
+        Number(d.durationMinutes) || 30;
+      const slug = str(d.slug);
+      const interviewTypeId = str(
+        d.interviewTypeId,
+      );
+
+      return (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-line bg-surface-subtle p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
+              HireMe by OurLynx
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+              This block links your public profile to an
+              interview type. Availability and bookings stay
+              inside HireMe.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-fg-muted">
+              Interview title
+            </label>
+            <input
+              className="field"
+              value={str(d.title)}
+              placeholder="Software Engineer Interview"
+              maxLength={160}
+              onChange={(event) =>
+                onChange({
+                  ...d,
+                  title: event.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-fg-muted">
+              Description
+            </label>
+            <textarea
+              className="field min-h-[84px] resize-y"
+              value={str(d.description)}
+              placeholder="Choose an available time for your interview."
+              maxLength={500}
+              onChange={(event) =>
+                onChange({
+                  ...d,
+                  description:
+                    event.target.value || undefined,
+                })
+              }
+            />
+            <p className="mt-1 text-right text-[11px] text-fg-subtle">
+              {str(d.description).length}/500
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-fg-muted">
+                Duration
+              </label>
+              <select
+                className="field"
+                value={durationMinutes}
+                onChange={(event) =>
+                  onChange({
+                    ...d,
+                    durationMinutes: Number(
+                      event.target.value,
+                    ),
+                  })
+                }
+              >
+                <option value={15}>15 minutes</option>
+                <option value={30}>30 minutes</option>
+                <option value={45}>45 minutes</option>
+                <option value={60}>60 minutes</option>
+                <option value={90}>90 minutes</option>
+                <option value={120}>2 hours</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-fg-muted">
+                Location
+              </label>
+              <input
+                className="field"
+                value={str(d.locationLabel)}
+                placeholder="Google Meet"
+                maxLength={160}
+                onChange={(event) =>
+                  onChange({
+                    ...d,
+                    locationLabel:
+                      event.target.value || undefined,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-fg-muted">
+              Button label
+            </label>
+            <input
+              className="field"
+              value={str(d.buttonLabel)}
+              placeholder="Choose an interview time"
+              maxLength={80}
+              onChange={(event) =>
+                onChange({
+                  ...d,
+                  buttonLabel: event.target.value,
+                })
+              }
+            />
+          </div>
+          <div className="border-t border-line pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+              Confirmation screen
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-fg-muted">
+                  Confirmation heading
+                </label>
+                <input
+                  className="field"
+                  value={str(d.confirmationTitle)}
+                  placeholder="Your interview is confirmed"
+                  maxLength={160}
+                  onChange={(event) =>
+                    onChange({
+                      ...d,
+                      confirmationTitle:
+                        event.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-fg-muted">
+                  Confirmation message
+                </label>
+                <textarea
+                  className="field min-h-[84px] resize-y"
+                  value={str(d.confirmationMessage)}
+                  placeholder="You’re booked to speak with the hiring manager."
+                  maxLength={500}
+                  onChange={(event) =>
+                    onChange({
+                      ...d,
+                      confirmationMessage:
+                        event.target.value,
+                    })
+                  }
+                />
+                <p className="mt-1 text-right text-[11px] text-fg-subtle">
+                  {str(d.confirmationMessage).length}/500
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-line pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+              Scheduling connection
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-fg-muted">
+                  Interview type ID
+                </label>
+                <input
+                  className="field"
+                  value={interviewTypeId}
+                  placeholder="software-engineer-technical"
+                  maxLength={120}
+                  onChange={(event) =>
+                    onChange({
+                      ...d,
+                      interviewTypeId:
+                        event.target.value.trim(),
+                    })
+                  }
+                />
+                  Select the interview setup that controls
+                  availability, duration, and booking rules for
+                  this block.
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-fg-muted">
+                  Public booking slug
+                </label>
+                <input
+                  className="field"
+                  value={slug}
+                  placeholder="software-engineer"
+                  maxLength={120}
+                  onChange={(event) => {
+                    const nextSlug = event.target.value
+                      .toLowerCase()
+                      .trim()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/^-+|-+$/g, "");
+
+                    onChange({
+                      ...d,
+                      slug: nextSlug,
+                    });
+                  }}
+                />
+                <p className="mt-1 text-[11px] leading-relaxed text-fg-subtle">
+                  Use lowercase letters, numbers, and hyphens.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-fg-muted">
+                  Job ID
+                </label>
+                <input
+                  className="field"
+                  value={str(d.jobId)}
+                  placeholder="senior-software-engineer"
+                  maxLength={120}
+                  onChange={(event) =>
+                    onChange({
+                      ...d,
+                      jobId:
+                        event.target.value.trim() ||
+                        undefined,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-line pt-4">
+            <div className="rounded-2xl border border-line bg-surface-subtle p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-fg">
+                    Candidate leads
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-fg-subtle">
+                    Review scheduled candidates or export their
+                    contact details and interview times.
+                  </p>
+                </div>
+
+                <span
+                  aria-hidden="true"
+                  className="text-xl"
+                >
+                  📋
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a
+                  href={`/hireme/${encodeURIComponent(
+                    decodeURIComponent(
+                      window.location.pathname
+                        .split("/")
+                        .filter(Boolean)[1] ?? "",
+                    ),
+                  )}`}
+                  className="rounded-full bg-accent px-3 py-2 text-xs font-semibold text-white"
+                >
+                  Open live inbox
+                </a>
+
+                <button
+                  type="button"
+                  className="rounded-full border border-line px-3 py-2 text-xs font-semibold text-fg hover:border-accent"
+                  onClick={() => {
+                    void (async () => {
+                      const identityId =
+                        decodeURIComponent(
+                          window.location.pathname
+                            .split("/")
+                            .filter(Boolean)[1] ?? "",
+                        );
+                      const query = interviewTypeId
+                        ? `?interviewTypeId=${encodeURIComponent(
+                            interviewTypeId,
+                          )}`
+                        : "";
+
+                      try {
+                        const response = await fetch(
+                          `/api/hireme/identities/${encodeURIComponent(
+                            identityId,
+                          )}/leads.csv${query}`,
+                          {
+                            headers: adminHeaders(),
+                          },
+                        );
+
+                        if (!response.ok) {
+                          const payload =
+                            (await response
+                              .json()
+                              .catch(() => ({}))) as {
+                              error?: string;
+                            };
+
+                          throw new Error(
+                            payload.error ||
+                              "The candidate report could not be downloaded.",
+                          );
+                        }
+
+                        const blob =
+                          await response.blob();
+                        const url =
+                          URL.createObjectURL(blob);
+                        const link =
+                          document.createElement("a");
+
+                        link.href = url;
+                        link.download = `hireme-${
+                          interviewTypeId || "all"
+                        }-leads.csv`;
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        URL.revokeObjectURL(url);
+                      } catch (caught) {
+                        window.alert(
+                          caught instanceof Error
+                            ? caught.message
+                            : "The candidate report could not be downloaded.",
+                        );
+                      }
+                    })();
+                  }}
+                >
+                  Download CSV
+                </button>
+              </div>
+
+              {!interviewTypeId ? (
+                <p className="mt-3 text-[11px] leading-relaxed text-amber-700">
+                  Add an interview type ID to limit the export
+                  to this block. Otherwise, it includes every
+                  HireMe lead for this identity.
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-line px-3 py-3">
+            <span>
+              <span className="block text-sm font-medium text-fg">
+                Accept interviews
+              </span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-fg-subtle">
+                Pause this block without deleting its
+                configuration.
+              </span>
+            </span>
+
+            <input
+              type="checkbox"
+              className="h-4 w-4 shrink-0 accent-current"
+              checked={d.active !== false}
+              onChange={(event) =>
+                onChange({
+                  ...d,
+                  active: event.target.checked,
+                })
+              }
+            />
+          </label>
+
+          {!interviewTypeId || !slug ? (
+            <div
+              role="status"
+              className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-700"
+            >
+              Add an interview type ID and public slug before
+              publishing the booking link.
+            </div>
+          ) : (
+            <div
+              role="status"
+              className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs leading-relaxed text-emerald-700"
+            >
+              Ready to publish. Candidates can use this block
+              to schedule an interview.
+            </div>
+          )}
         </div>
       );
     }

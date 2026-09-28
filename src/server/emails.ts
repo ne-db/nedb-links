@@ -707,3 +707,89 @@ export function productDeliveryEmail(opts: {
     ].join("\n"),
   };
 }
+
+
+// ── 13 · HireMe: confirmed interview ────────────────────────────────────────
+
+export function hireMeBookingEmail(opts: {
+  to: string;
+  recipient: "candidate" | "admin";
+  title: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone?: string;
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+  locationLabel?: string;
+}): OutgoingMail {
+  const start = new Date(opts.startsAt).toLocaleString("en-US", {
+    timeZone: opts.timezone,
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+  const end = new Date(opts.endsAt).toLocaleTimeString("en-US", {
+    timeZone: opts.timezone,
+    timeStyle: "short",
+  });
+  const when = `${start} – ${end} (${opts.timezone})`;
+  const location = opts.locationLabel || "Location details to follow";
+  const isAdmin = opts.recipient === "admin";
+
+  const html = shell({
+    preheader: isAdmin
+      ? `New HireMe interview confirmed with ${opts.candidateName} — ${when}.`
+      : `Your interview is confirmed — ${when}.`,
+    kicker: "hireme confirmed",
+    content: [
+      heading(isAdmin ? "New interview confirmed" : "Your interview is confirmed"),
+      paragraph(
+        isAdmin
+          ? `<b>${esc(opts.candidateName)}</b> booked <b>${esc(opts.title)}</b>.`
+          : `You're booked for <b>${esc(opts.title)}</b>.`,
+        { center: true },
+      ),
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0;">
+        <tr><td style="padding:10px 0;font-family:${FONT};font-size:14px;color:${MUTED};"><b style="color:${INK};">When</b><br/>${esc(when)}</td></tr>
+        <tr><td style="padding:10px 0;font-family:${FONT};font-size:14px;color:${MUTED};"><b style="color:${INK};">Where</b><br/>${esc(location)}</td></tr>
+        ${isAdmin ? `<tr><td style="padding:10px 0;font-family:${FONT};font-size:14px;color:${MUTED};"><b style="color:${INK};">Candidate</b><br/>${esc(opts.candidateName)} · ${esc(opts.candidateEmail)}${opts.candidatePhone ? ` · ${esc(opts.candidatePhone)}` : ""}</td></tr>` : ""}
+      </table>`,
+      divider(),
+      paragraph(
+        isAdmin
+          ? "The meeting is on the books. This notice was sent after the booking was durably recorded."
+          : "Save this email so you have the meeting details handy.",
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: isAdmin
+      ? `You're receiving this because ADMIN_EMAIL is configured for HireMe booking notifications on ${esc(BRAND)}.`
+      : `You're receiving this because you booked an interview through HireMe on ${esc(BRAND)}.`,
+  });
+
+  return {
+    to: opts.to,
+    subject: isAdmin
+      ? `HireMe booked — ${opts.candidateName} · ${opts.title}`
+      : `Interview confirmed — ${opts.title}`,
+    html,
+    text: [
+      isAdmin ? `${BRAND_UP} — NEW HIREME INTERVIEW` : `${BRAND_UP} — INTERVIEW CONFIRMED`,
+      "",
+      `Interview: ${opts.title}`,
+      `When:      ${when}`,
+      `Where:     ${location}`,
+      ...(isAdmin
+        ? [
+            `Candidate: ${opts.candidateName}`,
+            `Email:     ${opts.candidateEmail}`,
+            ...(opts.candidatePhone ? [`Phone:     ${opts.candidatePhone}`] : []),
+          ]
+        : []),
+      "",
+      isAdmin
+        ? "The meeting is on the books."
+        : "Save this email so you have the meeting details handy.",
+    ].join("\n"),
+  };
+}

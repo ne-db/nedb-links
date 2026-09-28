@@ -316,6 +316,115 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
   <i class="upia">₹${esc(price.toFixed(2).replace(/\.00$/, ""))}</i>
 </a>`;
     }
+    case "hireme": {
+      const escapeHireMeHtml = (
+        value: unknown,
+      ): string =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+      const title =
+        typeof d.title === "string" && d.title.trim()
+          ? d.title.trim()
+          : "Schedule an interview";
+      const description =
+        typeof d.description === "string"
+          ? d.description.trim()
+          : "";
+      const buttonLabel =
+        typeof d.buttonLabel === "string" &&
+        d.buttonLabel.trim()
+          ? d.buttonLabel.trim()
+          : "Choose an interview time";
+      const locationLabel =
+        typeof d.locationLabel === "string"
+          ? d.locationLabel.trim()
+          : "";
+      const durationMinutes = Number(d.durationMinutes);
+      const durationLabel =
+        Number.isFinite(durationMinutes) &&
+        durationMinutes > 0
+          ? `${durationMinutes} min`
+          : "";
+      const slug =
+        typeof d.slug === "string"
+          ? d.slug.trim()
+          : "";
+      const identityId = String(m.identityId ?? "");
+      const active = d.active !== false;
+      const metadata = [
+        durationLabel,
+        locationLabel,
+      ].filter(Boolean);
+
+      const bookingHref =
+        active && identityId && slug
+          ? `/hire/${encodeURIComponent(
+              identityId,
+            )}/${encodeURIComponent(slug)}`
+          : "";
+
+      const action = bookingHref
+        ? `<a
+            href="${escapeHireMeHtml(bookingHref)}"
+            style="display:inline-flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin-top:16px;padding:12px 16px;border-radius:999px;background:currentColor;text-decoration:none;font-weight:700"
+          ><span style="color:var(--background,#fff)">${escapeHireMeHtml(
+            buttonLabel,
+          )} &rarr;</span></a>`
+        : `<span
+            aria-disabled="true"
+            style="display:inline-flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin-top:16px;padding:12px 16px;border:1px solid currentColor;border-radius:999px;opacity:.55;font-weight:700"
+          >${
+            active
+              ? "Booking link being configured"
+              : "Bookings paused"
+          }</span>`;
+
+      return `<section
+        data-block-id="${escapeHireMeHtml(b.id)}"
+        data-block-type="hireme"
+        style="padding:20px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:20px;text-align:left"
+      >
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div>
+            <div style="margin-bottom:6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.65">
+              HireMe by OurLynx
+            </div>
+            <h2 style="margin:0;font-size:20px;line-height:1.25">${escapeHireMeHtml(
+              title,
+            )}</h2>
+          </div>
+          <span
+            aria-hidden="true"
+            style="display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:40px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:12px;font-size:20px"
+          >&#128197;</span>
+        </div>
+        ${
+          metadata.length
+            ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">${metadata
+                .map(
+                  (item) =>
+                    `<span style="padding:5px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:999px;font-size:12px;font-weight:700">${escapeHireMeHtml(
+                      item,
+                    )}</span>`,
+                )
+                .join("")}</div>`
+            : ""
+        }
+        ${
+          description
+            ? `<p style="margin:12px 0 0;line-height:1.55;opacity:.78">${escapeHireMeHtml(
+                description,
+              )}</p>`
+            : ""
+        }
+        ${action}
+      </section>`;
+    }
     case "booking": {
       // Same destination as a product — the buy page owns slot choice,
       // payment and the claim. The card's job is just to say what it is

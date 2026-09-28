@@ -215,6 +215,87 @@ export const productBlock = defineBlock({
  * they were paid for. A string the seller wrote is a string the buyer
  * reads back unchanged.
  */
+/**
+ * HireMe is the public profile entry point for interview scheduling.
+ *
+ * The block owns presentation and routing references only. Interview types,
+ * availability rules, and candidate bookings remain in the HireMe domain.
+ */
+export const hireMeBlock = defineBlock({
+  type: "hireme",
+  name: "HireMe interview",
+  description:
+    "Share an interview booking link backed by HireMe scheduling.",
+  capabilities: [
+    "shareable",
+    "qr",
+    "searchable",
+    "exportable",
+    "schedulable",
+    "seo",
+  ],
+  schema: z.object({
+    interviewTypeId: z.string().max(120),
+    slug: z
+      .string()
+      .max(120)
+      .refine(
+        (value) =>
+          value === "" ||
+          /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value),
+        "Slug must contain lowercase letters, numbers, and hyphens",
+      ),
+    jobId: z.string().max(120).optional(),
+    title: z.string().min(1).max(160),
+    description: z.string().max(500).optional(),
+    durationMinutes: z.number().int().min(5).max(480),
+    locationLabel: z.string().max(160).optional(),
+    buttonLabel: z.string().min(1).max(80),
+    confirmationTitle: z.string().min(1).max(160),
+    confirmationMessage: z.string().min(1).max(500),
+    timezone: z.string().min(1).max(100),
+    availableDays: z
+      .array(z.number().int().min(0).max(6))
+      .min(1)
+      .max(7),
+    availabilityStart: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/),
+    availabilityEnd: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/),
+    slotStepMinutes: z.number().int().min(5).max(120),
+    minimumNoticeMinutes: z
+      .number()
+      .int()
+      .min(0)
+      .max(43_200),
+    bookingHorizonDays: z.number().int().min(1).max(90),
+    active: z.boolean(),
+  }),
+  defaults: () => ({
+    interviewTypeId: "",
+    slug: "",
+    jobId: undefined,
+    title: "Schedule an interview",
+    description:
+      "Choose an available time for your interview.",
+    durationMinutes: 30,
+    locationLabel: "Online",
+    buttonLabel: "Choose an interview time",
+    confirmationTitle: "Your interview is confirmed",
+    confirmationMessage:
+      "You’re booked to speak with the hiring manager. We sent your interview details to the email address you provided.",
+    active: true,
+    timezone: "UTC",
+    availableDays: [1, 2, 3, 4, 5],
+    availabilityStart: "09:00",
+    availabilityEnd: "17:00",
+    slotStepMinutes: 30,
+    minimumNoticeMinutes: 720,
+    bookingHorizonDays: 21,
+  }),
+});
 export const bookingBlock = defineBlock({
   type: "booking",
   name: "Paid booking",

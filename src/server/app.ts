@@ -21,6 +21,7 @@ import { mountCashfreeWebhook } from "./cashfree";
 import { config } from "./config";
 import { db } from "./db";
 import { grants } from "./grants";
+import { hireme } from "./hireme";
 import { handles, identities } from "./identities";
 import { payments } from "./payments";
 import { preview } from "./preview";
@@ -69,20 +70,43 @@ export function createApp(): Express {
 
   // ── Health — reports every dependency ────────────────────────────────────
   app.get("/api/health", async (_req, res) => {
-    let nedb: { ok: boolean; version?: string; error?: string } = { ok: false };
+    let nedb: {
+      ok: boolean;
+      version?: string;
+      mode: "embedded";
+      error?: string;
+    } = {
+      ok: false,
+      mode: "embedded",
+    };
+
     try {
-      const h = await db.health();
-      nedb = { ok: h.ok, version: h.version };
+      const health = await db.health();
+      nedb = {
+        ok: health.ok,
+        version: health.version,
+        mode: "embedded",
+      };
     } catch (err) {
-      nedb = { ok: false, error: err instanceof Error ? err.message : String(err) };
+      nedb = {
+        ok: false,
+        mode: "embedded",
+        error:
+          err instanceof Error
+            ? err.message
+            : String(err),
+      };
     }
+
     res.json({
       links: "ok",
       nedb,
-      nedbUrl: config.nedbUrl,
+      nedbMode: "embedded",
       db: config.nedbDb,
       authConfigured: Boolean(config.adminToken),
-      aiassist: { configured: Boolean(config.aiassistApiKey) },
+      aiassist: {
+        configured: Boolean(config.aiassistApiKey),
+      },
     });
   });
 
@@ -115,6 +139,7 @@ export function createApp(): Express {
   app.use("/api/billing", billing);
   app.use("/api/handles", handles);
   app.use("/api/identities/:id/analytics", analytics);
+  app.use("/api/hireme", hireme);
   app.use("/api/identities/:id/grants", grants);
   app.use("/api/identities/:id/payments", payments);
   app.use("/api/identities/:id/purchases", purchasesApi);

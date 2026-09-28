@@ -48,7 +48,7 @@ await ensureDatabase();
 
 const server = createApp().listen(config.port, () => {
   console.log(`\x1b[36m⬡ NEDB Links\x1b[0m listening on :${config.port}`);
-  console.log(`  nedbd → ${config.nedbUrl} (db: ${config.nedbDb})`);
+  console.log(`  NEDB → embedded durable DAG (db: ${config.nedbDb})`);
   warnIfOpen();
 });
 
